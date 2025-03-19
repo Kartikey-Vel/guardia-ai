@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, status, BackgroundTasks, Query
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timedelta
 from src.api.tweety_auth import get_current_user, User
 from src.db.porky_mongo import get_events_collection
 from src.utils.tasmanian_logger import setup_logger
