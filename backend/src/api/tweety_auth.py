@@ -35,9 +35,10 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: Optional[str] = None
     created_at: Optional[datetime] = None
-
-    class Config:
-        orm_mode = True
+    
+    model_config = {
+        "from_attributes": True
+    }
 
 class UserInDB(User):
     hashed_password: str
