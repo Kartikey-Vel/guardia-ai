@@ -166,3 +166,10 @@ class AudioProcessor:
         """Start the audio processing service."""
         self.is_running = True
         logger.info("Starting audio processing service")
+        while self.is_running:
+            await asyncio.sleep(1)
+    
+    async def stop_processing(self):
+        """Stop the audio processing service gracefully."""
+        self.is_running = False
+        logger.info("Stopping audio processing service")

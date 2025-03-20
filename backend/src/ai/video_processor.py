@@ -149,3 +149,10 @@ class VideoProcessor:
         """Start the video processing service."""
         self.is_running = True
         logger.info("Starting video processing service")
+        while self.is_running:
+            await asyncio.sleep(1)
+    
+    async def stop_processing(self):
+        """Stop the video processing service gracefully."""
+        self.is_running = False
+        logger.info("Stopping video processing service")
