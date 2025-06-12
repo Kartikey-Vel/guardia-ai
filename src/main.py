@@ -204,17 +204,87 @@ def main():
                     print("✗ Failed to add family member.")
 
             print("\n--- Starting Cloud Surveillance ---")
-            print("This will start camera monitoring with cloud AI analysis.")
+            print("Choose surveillance mode:")
+            print("1. Basic Cloud Analysis (15s video capture + analysis)")
+            print("2. Advanced Live Surveillance (real-time AI analysis)")
+            print("3. 🚀 Enhanced Surveillance (NEW! - with recording & notifications)")
+            print("4. Exit")
             
-            # Initialize cloud detector
-            if initialize_cloud_detector():
-                print("✅ Cloud detector initialized successfully")
+            surveillance_choice = input("Select mode (1-4): ").strip()
+            
+            if surveillance_choice == "1":
+                print("This will start camera monitoring with cloud AI analysis.")
+                
+                # Initialize cloud detector
+                if initialize_cloud_detector():
+                    print("✅ Cloud detector initialized successfully")
+                else:
+                    print("⚠️ Cloud detector initialization failed - using local detection")
+                
+                input("Press Enter to start surveillance...")
+                start_detection()
+                
+            elif surveillance_choice == "2":
+                print("Starting Advanced Live Surveillance System...")
+                print("This includes real-time face recognition, threat detection, and intelligent alerting.")
+                
+                try:
+                    from modules.advanced_surveillance import start_advanced_surveillance
+                    start_advanced_surveillance(email)
+                except ImportError as e:
+                    print(f"❌ Advanced surveillance not available: {e}")
+                    print("Falling back to basic surveillance...")
+                    if initialize_cloud_detector():
+                        print("✅ Cloud detector initialized successfully")
+                    else:
+                        print("⚠️ Cloud detector initialization failed - using local detection")
+                    
+                    input("Press Enter to start surveillance...")
+                    start_detection()
+                    
+            elif surveillance_choice == "3":
+                print("🚀 Starting Enhanced Advanced Surveillance System...")
+                print("This includes ALL advanced features:")
+                print("   ✅ Real-time Face Recognition")
+                print("   ✅ Desktop Notifications")
+                print("   ✅ Automatic Video Recording")
+                print("   ✅ System Health Monitoring")
+                print("   ✅ Scheduled Maintenance")
+                print("   ✅ Performance Optimization")
+                
+                # Enhanced options
+                print("\n⚙️ Enhanced Settings:")
+                enable_recording = input("Enable automatic recording? (Y/n): ").strip().lower()
+                enable_recording = enable_recording != 'n'
+                
+                notification_options = input("Notification types (desktop,console,log or press Enter for all): ").strip()
+                if notification_options:
+                    notification_types = [t.strip() for t in notification_options.split(',')]
+                else:
+                    notification_types = ['desktop', 'console', 'log']
+                
+                try:
+                    from modules.advanced_surveillance import start_enhanced_advanced_surveillance
+                    start_enhanced_advanced_surveillance(
+                        owner_email=email,
+                        enable_recording=enable_recording,
+                        notification_types=notification_types
+                    )
+                except ImportError as e:
+                    print(f"❌ Enhanced surveillance not available: {e}")
+                    print("Falling back to standard advanced surveillance...")
+                    try:
+                        from modules.advanced_surveillance import start_advanced_surveillance
+                        start_advanced_surveillance(email)
+                    except ImportError:
+                        print("❌ No advanced surveillance available - using basic mode")
+                        start_detection()
+            elif surveillance_choice == "4":
+                print("👋 Exiting surveillance menu...")
+                break
             else:
-                print("⚠️ Cloud detector initialization failed - using local detection")
-            
-            input("Press Enter to start surveillance...")
-            start_detection()
-            break
+                print("Invalid choice. Please select 1-4.")
+                continue
 
         elif choice == '3':
             print("👋 Goodbye!")
