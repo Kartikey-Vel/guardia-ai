@@ -1,111 +1,117 @@
 import json
 import os
 import hashlib
-import cv2
+from pymongo import MongoClient
+from config.settings import MONGO_DB_URI, MONGO_DB_NAME, GOOGLE_APPLICATION_CREDENTIALS # Added GOOGLE_APPLICATION_CREDENTIALS for potential use here
 
-# Try to import face_recognition, fallback gracefully if not available
-try:
-    import face_recognition
-    import numpy as np
-    FACE_RECOGNITION_AVAILABLE = True
-    print("✅ Face recognition available in auth module")
-except ImportError:
-    FACE_RECOGNITION_AVAILABLE = False
-    print("⚠️ Face recognition not available in auth module - using basic mode")
+# # Use data directory for database (Old file-based DB)
+# DB_FILE = "data/db.json"
 
-# Use data directory for database
-DB_FILE = "data/db.json"
+# --- MongoDB Connection ---
+client = None
+db = None
+owners_collection = None
+
+def get_mongo_collections():
+    global client, db, owners_collection
+    if not client and MONGO_DB_URI: # Check if MONGO_DB_URI is set
+        try:
+            client = MongoClient(MONGO_DB_URI)
+            # Test connection before assigning db and collections
+            client.admin.command('ping') 
+            print("✅ MongoDB connection successful.")
+            db = client[MONGO_DB_NAME]
+            owners_collection = db["owners"]
+        except Exception as e:
+            print(f"❌ Failed to connect to MongoDB: {e}")
+            print(f"  URI: {MONGO_DB_URI}")
+            print(f"  DB Name: {MONGO_DB_NAME}")
+            print("  Ensure MongoDB is running and accessible, and MONGO_DB_URI in .env.local is correct.")
+            client = None
+            db = None
+            owners_collection = None
+            return False
+    elif not MONGO_DB_URI:
+        print("⚠️ MONGO_DB_URI not set in environment. Skipping MongoDB initialization.")
+        return False
+    return True
+
+# Ensure collections are initialized when module is loaded
+get_mongo_collections()
+
 
 def hash_password(password):
     return hashlib.sha256(password.strip().encode('utf-8')).hexdigest()
 
-def create_owner(name, email, password, image_path):
-    # Ensure data directory exists
-    os.makedirs("data", exist_ok=True)
-    
-    if not os.path.exists(DB_FILE):
-        data = {"owners": []}
-    else:
-        with open(DB_FILE, "r") as f:
-            data = json.load(f)
+def create_owner(name, email, password, image_path=None): # image_path is now optional
+    if owners_collection is None:
+        print("MongoDB owners collection not available. Attempting to reconnect...")
+        if not get_mongo_collections(): 
+             print("Failed to connect to MongoDB. Cannot create owner.")
+             return False
+        if owners_collection is None: # Check again after attempting reconnect
+            print("Still unable to access MongoDB owners collection after reconnect attempt.")
+            return False
 
-    # Limit to 3 owners
-    if len(data["owners"]) >= 3:
+    # Limit to 3 owners (This logic might be better handled elsewhere or re-evaluated)
+    if owners_collection.count_documents({}) >= 3:
         print("Maximum number of owners (3) already registered.")
         return False
 
-    for owner in data["owners"]:
-        if owner["email"] == email:
-            print("Owner with this email already exists.")
-            return False
+    if owners_collection.find_one({"email": email}):
+        print("Owner with this email already exists.")
+        return False
 
     try:
-        if not os.path.exists(image_path):
-            print(f"Image path does not exist: {image_path}")
-            return False
-
-        if FACE_RECOGNITION_AVAILABLE:
-            # Full face recognition mode
-            image = face_recognition.load_image_file(image_path)
-            encodings = face_recognition.face_encodings(image)
-
-            if not encodings:
-                print("No face detected in owner's image.")
-                return False
-
-            encoding = encodings[0]
-            os.makedirs("encodings", exist_ok=True)
-            os.makedirs("faces", exist_ok=True)
-
-            enc_file = f"encodings/{name}_owner.npy"
-            img_file = f"faces/{name}_owner.jpg"
-
-            np.save(enc_file, encoding)
-            img_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            cv2.imwrite(img_file, img_bgr)
+        saved_image_path = None
+        if image_path:
+            if not os.path.exists(image_path):
+                print(f"Image path does not exist: {image_path}")
             
-            print(f"Owner {name} created successfully with face encoding saved.")
-        else:
-            # Basic mode - just save the image without face recognition
-            os.makedirs("faces", exist_ok=True)
-            img_file = f"faces/{name}_owner.jpg"
-            
-            # Just copy the image file
+            os.makedirs("faces", exist_ok=True) 
             import shutil
-            shutil.copy2(image_path, img_file)
-            print(f"Owner {name} created successfully (basic mode - no face encoding).")
+            # Sanitize filename components
+            safe_name = "".join(c if c.isalnum() else '_' for c in name)
+            base_image_name = os.path.basename(image_path)
+            safe_base_image_name = "".join(c if c.isalnum() or c in '.-' else '_' for c in base_image_name)
+            saved_image_path = f"faces/{safe_name}_owner_{safe_base_image_name}"
+            shutil.copy2(image_path, saved_image_path)
+            print(f"Owner {name} created. Image reference: {saved_image_path}")
+        else:
+            print(f"Owner {name} created without an initial image.")
 
-        owner = {
+        owner_data = {
             "name": name,
             "email": email,
             "password": hash_password(password),
-            "image": img_file,
+            "image_reference": saved_image_path, 
             "family": [],
-            "face_recognition_enabled": FACE_RECOGNITION_AVAILABLE
+            "cloud_video_intelligence_enabled": True
         }
 
-        data["owners"].append(owner)
-
-        with open(DB_FILE, "w") as f:
-            json.dump(data, f, indent=4)
-
+        result = owners_collection.insert_one(owner_data)
+        print(f"Owner {name} added to MongoDB with ID: {result.inserted_id}")
         return True
 
     except Exception as e:
-        print(f"Error processing owner's image: {e}")
+        print(f"Error creating owner in MongoDB: {e}")
         return False
 
 def login_owner(email, password):
-    if not os.path.exists(DB_FILE):
-        print("Database not found.")
-        return None
+    if owners_collection is None:
+        print("MongoDB owners collection not available. Attempting to reconnect...")
+        if not get_mongo_collections():
+            print("Failed to connect to MongoDB. Cannot login owner.")
+            return None
+        if owners_collection is None: # Check again
+            print("Still unable to access MongoDB owners collection after reconnect attempt for login.")
+            return None
 
-    with open(DB_FILE, "r") as f:
-        data = json.load(f)
+    owner = owners_collection.find_one({"email": email})
 
-    for owner in data["owners"]:
-        if owner["email"] == email and owner["password"] == hash_password(password):
-            return owner
+    if owner and owner["password"] == hash_password(password):
+        print(f"Owner {owner.get('name', 'N/A')} logged in successfully.")
+        return owner # Returns the owner document from MongoDB
 
     print("Invalid email or password.")
     return None

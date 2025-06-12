@@ -40,9 +40,10 @@ def install_packages():
         "numpy>=1.24.0,<2.0.0",
         "pillow>=8.3.0",
         "opencv-python>=4.8.0",
-        "scipy>=1.9.0",
-        "dlib>=19.24.0",
-        "face-recognition>=1.3.0"
+        "scipy>=1.9.0",        "google-cloud-videointelligence>=2.0.0", # Ensure version
+        "google-cloud-storage>=2.0.0", # For GCS upload
+        "python-dotenv>=0.20.0", # Added
+        "pymongo>=4.0.0" # Added
     ]
     
     failed_packages = []

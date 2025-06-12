@@ -1,74 +1,126 @@
-import json
 import os
-import cv2
+import shutil
+from pymongo import MongoClient
+from bson import ObjectId
+from config.settings import MONGO_DB_URI, MONGO_DB_NAME
 
-# Try to import face_recognition, fallback gracefully if not available
-try:
-    import face_recognition
-    import numpy as np
-    FACE_RECOGNITION_AVAILABLE = True
-    print("✅ Face recognition available in family module")
-except ImportError:
-    FACE_RECOGNITION_AVAILABLE = False
-    print("⚠️ Face recognition not available in family module - using basic mode")
+client = None
+db = None
+owners_collection = None
 
-DB_FILE = "data/db.json"
-
-def add_family_member(owner_email, name, relation, image_path):
-    if not os.path.exists(DB_FILE):
-        print("Database not found. Please create an owner account first.")
+def get_mongo_collections_for_family():
+    global client, db, owners_collection
+    if owners_collection is not None: # Already initialized
+        return True
+    if not MONGO_DB_URI:
+        print("⚠️ MONGO_DB_URI not set. Skipping MongoDB initialization for family module.")
         return False
-
-    with open(DB_FILE, "r") as f:
-        data = json.load(f)
-
-    owner = next((o for o in data["owners"] if o["email"] == owner_email), None)
-    if not owner:
-        print("Owner not found.")
-        return False
-
     try:
-        if not os.path.exists(image_path):
-            print(f"Image path does not exist: {image_path}")
+        if client is None: # Initialize client only if it hasn't been
+            client = MongoClient(MONGO_DB_URI)
+        client.admin.command('ping')
+        print("✅ MongoDB connection successful for family module.")
+        db = client[MONGO_DB_NAME]
+        owners_collection = db["owners"]
+        return True
+    except Exception as e:
+        print(f"❌ Failed to connect to MongoDB (family module): {e}")
+        # Reset so an attempt can be made again if called later
+        client = None 
+        db = None
+        owners_collection = None
+        return False
+
+# Attempt to initialize when module is loaded
+get_mongo_collections_for_family()
+
+def add_family_member(owner_email, name, relation, image_path=None):
+    if owners_collection is None:
+        print("MongoDB owners collection not available. Attempting to reconnect...")
+        if not get_mongo_collections_for_family() or owners_collection is None:
+            print("Failed to connect/access MongoDB. Cannot add family member.")
             return False
 
-        if FACE_RECOGNITION_AVAILABLE:
-            # Full face recognition mode
-            image = face_recognition.load_image_file(image_path)
-            encodings = face_recognition.face_encodings(image)
-            if not encodings:
-                print("No face found in image.")
-                return False
-            encoding = encodings[0]
+    owner_query = {"email": owner_email}
 
-            os.makedirs("encodings", exist_ok=True)
-            os.makedirs("faces", exist_ok=True)
-
-            np.save(f"encodings/{name}.npy", encoding)
-            img_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            cv2.imwrite(f"faces/{name}.jpg", img_bgr)
-            
-            print(f"Family member {name} added successfully with encoding saved.")
-        else:
-            # Basic mode - just save the image without face recognition
-            os.makedirs("faces", exist_ok=True)
-            
-            # Just copy the image file
-            import shutil
-            shutil.copy2(image_path, f"faces/{name}.jpg")
-            print(f"Family member {name} added successfully (basic mode - no face encoding).")
-
-        owner["family"].append({
-            "name": name, 
+    try:
+        saved_image_path = None
+        if image_path:
+            if not os.path.exists(image_path):
+                print(f"Warning: Image path does not exist: {image_path}")
+            else:
+                os.makedirs("faces", exist_ok=True)
+                # Sanitize filename components
+                safe_name = "".join(c if c.isalnum() else '_' for c in name)
+                base_image_name = os.path.basename(image_path)
+                safe_base_image_name = "".join(c if c.isalnum() or c in '.-' else '_' for c in base_image_name)
+                saved_image_path = f"faces/{safe_name}_family_{safe_base_image_name}"
+                shutil.copy2(image_path, saved_image_path)
+                print(f"Family member {name} image reference: {saved_image_path}")
+        
+        family_member_data = {
+            "_id": ObjectId(), # Unique ID for the family member within the array
+            "name": name,
             "relation": relation,
-            "face_recognition_enabled": FACE_RECOGNITION_AVAILABLE
-        })
+            "image_reference": saved_image_path,
+            # "cloud_person_id": None, # Placeholder for future integration with Video AI person ID
+        }
 
-        with open(DB_FILE, "w") as f:
-            json.dump(data, f, indent=4)
+        # Add the family member to the owner's "family" array
+        # $push creates the array field if it does not exist.
+        update_result = owners_collection.update_one(
+            owner_query,
+            {"$push": {"family": family_member_data}}
+        )
 
-        return True
+        if update_result.matched_count == 0:
+            print(f"Owner with email {owner_email} not found in MongoDB.")
+            return False
+        
+        if update_result.modified_count > 0:
+            print(f"Family member '{name}' added to owner '{owner_email}' in MongoDB.")
+            return True
+        else:
+            # This case might occur if the document was matched but not modified.
+            # For $push, this is unusual unless there's a very specific edge case or a problem with the update operation itself.
+            # One possibility is if the 'family' field exists but is not an array, though $push should error then.
+            print(f"Failed to add family member '{name}' for owner '{owner_email}'. Matched: {update_result.matched_count}, Modified: {update_result.modified_count}")
+            # You could add more sophisticated checks here if needed, e.g., ensuring 'family' is an array.
+            return False
 
     except Exception as e:
-        print(f"Error processing family member's image: {e}")
+        print(f"Error adding family member to MongoDB: {e}")
+        return False
+
+# Example of how to list family members (can be expanded)
+def list_family_members(owner_email):
+    if owners_collection is None:
+        if not get_mongo_collections_for_family() or owners_collection is None:
+            print("MongoDB not available for listing family members.")
+            return []
+            
+    owner = owners_collection.find_one({"email": owner_email}, {"family": 1}) # Project only the family field
+    if owner and "family" in owner:
+        return owner["family"]
+    return []
+
+# Example of how to remove a family member (can be expanded)
+def remove_family_member(owner_email, family_member_id_str):
+    if owners_collection is None:
+        if not get_mongo_collections_for_family() or owners_collection is None:
+            print("MongoDB not available for removing family member.")
+            return False
+    try:
+        family_member_id = ObjectId(family_member_id_str)
+        result = owners_collection.update_one(
+            {"email": owner_email},
+            {"$pull": {"family": {"_id": family_member_id}}}
+        )
+        if result.modified_count > 0:
+            print(f"Family member with ID {family_member_id_str} removed for owner {owner_email}.")
+            return True
+        print(f"Family member with ID {family_member_id_str} not found or not removed for owner {owner_email}.")
+        return False
+    except Exception as e:
+        print(f"Error removing family member: {e}")
         return False

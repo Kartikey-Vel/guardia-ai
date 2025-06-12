@@ -17,7 +17,6 @@ except ImportError as e:
     print(f"⚠️ Cloud modules not available: {e}")
     print("Running in basic mode")
     CLOUD_MODULES_AVAILABLE = False
-    
     # Import basic detection functionality even if cloud modules fail
     try:
         from modules.detector import start_detection, basic_motion_detection, check_camera_access, capture_user_face
@@ -103,12 +102,16 @@ def main():
                 # Camera face capture
                 print("\n📸 Starting camera for face capture...")
                 if check_camera_access():
-                    captured_path = capture_user_face(name)
-                    if captured_path:
-                        image_path = captured_path
-                        print(f"✅ Face captured and saved: {captured_path}")
-                    else:
-                        print("❌ Face capture failed. Creating account without image.")
+                    try:
+                        from modules.detector import capture_user_face
+                        captured_path = capture_user_face(name)
+                        if captured_path:
+                            image_path = captured_path
+                            print(f"✅ Face captured and saved: {captured_path}")
+                        else:
+                            print("❌ Face capture failed. Creating account without image.")
+                    except ImportError:
+                        print("❌ Camera capture not available. Please choose another option.")
                 else:
                     print("❌ Camera not accessible. Creating account without image.")
                     
@@ -153,7 +156,7 @@ def main():
                 add = input("\nAdd Family Member? (y/n): ").strip().lower()
                 if add != 'y':
                     break
-                    
+                
                 name = input("Family Member Name: ").strip()
                 relation = input("Relation (e.g., Father, Mother, Brother): ").strip()
                 

@@ -129,7 +129,6 @@ def main():
                 print("✓ Owner account created successfully!")
             else:
                 print("✗ Failed to create owner account.")
-
         elif choice == '2':
             print("\n--- Login ---")
             email = input("Enter Email: ").strip()

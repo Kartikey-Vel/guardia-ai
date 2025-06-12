@@ -38,12 +38,6 @@ RUN apt-get update && apt-get install -y \
     libopenexr-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Try to install dlib dependencies (some may not be available)
-RUN apt-get update && apt-get install -y \
-    libdlib-dev \
-    libdc1394-dev \
-    || echo "Some optional packages not available, continuing..." && rm -rf /var/lib/apt/lists/*
-
 # Set working directory
 WORKDIR /app
 
@@ -56,16 +50,9 @@ RUN pip install --no-cache-dir "opencv-python>=4.8.0" || echo "opencv install fa
 RUN pip install --no-cache-dir "pillow>=8.3.0" || echo "pillow install failed"
 RUN pip install --no-cache-dir "scipy>=1.9.0" || echo "scipy install failed"
 
-# Install cmake and dlib with fallback
-RUN pip install --no-cache-dir "cmake>=3.18.0" || echo "cmake install failed"
-RUN pip install --no-cache-dir --verbose "dlib>=19.24.0" || echo "dlib install failed, will use fallback"
-
-# Install face-recognition with fallback
-RUN pip install --no-cache-dir "face-recognition>=1.3.0" || echo "face-recognition install failed, will use fallback"
-
 # Copy requirements and install any remaining dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt || echo "Some requirements failed, continuing..."
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
