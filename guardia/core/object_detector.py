@@ -49,8 +49,9 @@ class EnhancedObjectDetector:
         self.yolo_config = MODEL_CONFIGS["yolo"]
         self.mask_config = MODEL_CONFIGS["mask_detection"]
         
-        # Initialize models
-        asyncio.create_task(self._initialize_models())
+        # Initialize models lazily (when first needed)
+        # asyncio.create_task(self._initialize_models())  # Commented out for desktop app compatibility
+        self._models_initialization_started = False
     
     async def _initialize_models(self):
         """Initialize YOLO and other detection models"""

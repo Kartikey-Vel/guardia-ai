@@ -5,7 +5,7 @@ Modern configuration management with environment-based settings
 import os
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 from enum import Enum
 
@@ -56,8 +56,14 @@ class Settings(BaseSettings):
     enable_video_intelligence: bool = Field(default=True, alias="ENABLE_VIDEO_INTELLIGENCE")
     video_intelligence_features: str = Field(default="PERSON_DETECTION,OBJECT_TRACKING", alias="VIDEO_INTELLIGENCE_FEATURES")
     
-    # Camera and Detection Settings (from env)
-    camera_sources: str = Field(default="0", alias="CAMERA_SOURCES")
+    # Camera Settings (from env)
+    camera_sources: List[str] = Field(default=["0"], alias="CAMERA_SOURCES")
+    camera_index: int = Field(default=0, alias="CAMERA_INDEX")
+    camera_resolution: str = Field(default="1280x720", alias="CAMERA_RESOLUTION")
+    camera_fps: int = Field(default=30, alias="CAMERA_FPS")
+    frame_width: int = Field(default=1280, alias="FRAME_WIDTH")
+    frame_height: int = Field(default=720, alias="FRAME_HEIGHT")
+    fps: int = Field(default=30, alias="FPS")
     face_detection_confidence: float = Field(default=0.5, alias="FACE_DETECTION_CONFIDENCE")
     object_detection_confidence: float = Field(default=0.5, alias="OBJECT_DETECTION_CONFIDENCE")
     mask_detection_confidence: float = Field(default=0.5, alias="MASK_DETECTION_CONFIDENCE")
@@ -65,6 +71,25 @@ class Settings(BaseSettings):
     max_frames_buffer: int = Field(default=30, alias="MAX_FRAMES_BUFFER")
     alert_cooldown_seconds: int = Field(default=30, alias="ALERT_COOLDOWN_SECONDS")
     max_video_duration_seconds: int = Field(default=30, alias="MAX_VIDEO_DURATION_SECONDS")
+    auto_exposure: bool = Field(default=True, alias="AUTO_EXPOSURE")
+    
+    @field_validator('camera_sources', mode='before')
+    @classmethod
+    def parse_camera_sources(cls, v):
+        """Parse camera sources from string or list"""
+        if isinstance(v, str):
+            # Handle comma-separated string or single value
+            if ',' in v:
+                return [s.strip() for s in v.split(',')]
+            else:
+                return [v.strip()]
+        elif isinstance(v, (int, float)):
+            # Handle single numeric value
+            return [str(v)]
+        elif isinstance(v, list):
+            # Already a list, ensure all values are strings
+            return [str(item) for item in v]
+        return v
     
     # Storage Settings (from env)
     media_storage_path: str = Field(default="./storage/media", alias="MEDIA_STORAGE_PATH")
@@ -158,5 +183,34 @@ def get_settings() -> Settings:
 # Create global settings instance
 settings = get_settings()
 
+# Model configurations for AI components
+MODEL_CONFIGS = {
+    "face_detection": {
+        "model_name": "mediapipe",
+        "confidence_threshold": 0.7,
+        "min_detection_confidence": 0.5,
+        "min_tracking_confidence": 0.5,
+        "max_num_faces": 10
+    },
+    "face_recognition": {
+        "tolerance": 0.6,
+        "model": "large",
+        "jitters": 1,
+        "encoding_model": "large"
+    },
+    "yolo": {
+        "model_path": "yolov8n.pt",
+        "confidence_threshold": 0.5,
+        "iou_threshold": 0.4,
+        "device": "cpu",
+        "classes": [0]  # person class
+    },
+    "mask_detection": {
+        "model_path": "mask_detector.model",
+        "confidence_threshold": 0.5,
+        "image_size": (224, 224)
+    }
+}
+
 # Export configuration
-__all__ = ["Settings", "get_settings", "settings", "PriorityLevel"]
+__all__ = ["Settings", "get_settings", "settings", "PriorityLevel", "MODEL_CONFIGS"]

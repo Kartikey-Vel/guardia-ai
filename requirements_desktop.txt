@@ -1,0 +1,33 @@
+# Guardia AI Desktop Application - GUI Requirements
+# Essential packages for the modern desktop interface
+
+# =============================================================================
+# MODERN GUI FRAMEWORK
+# =============================================================================
+customtkinter==5.2.2     # Modern, beautiful Tkinter interface
+pillow==10.0.1           # Image processing for GUI
+darkdetect==0.8.0        # Auto dark/light theme detection
+
+# =============================================================================
+# COMPUTER VISION - ESSENTIAL
+# =============================================================================
+opencv-python==4.8.1.78  # Camera capture and basic image processing
+numpy==1.24.3            # Numerical operations
+
+# =============================================================================
+# CORE AI (OPTIONAL) - Install for full features
+# =============================================================================
+# Uncomment these for full AI functionality:
+# torch==2.1.0
+# torchvision==0.16.0
+# ultralytics==8.0.206    # YOLO v8 for object detection
+# face-recognition==1.3.0 # Face recognition
+# dlib==19.24.2           # Face detection backend
+# mediapipe==0.10.7       # Google's ML framework
+
+# =============================================================================
+# UTILITIES
+# =============================================================================
+python-dotenv==1.0.0     # Environment configuration
+loguru==0.7.2            # Advanced logging
+python-dateutil==2.8.2   # Date/time utilities
