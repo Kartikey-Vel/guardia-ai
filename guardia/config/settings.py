@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     # Database Settings - MongoDB Atlas (from env)
     mongodb_url: str = Field(alias="MONGODB_URL")
     mongodb_database: str = Field(default="guardia_ai_db", alias="MONGODB_DATABASE")
+    mongodb_max_connections: int = Field(default=100, alias="MONGODB_MAX_CONNECTIONS")
+    mongodb_min_connections: int = Field(default=10, alias="MONGODB_MIN_CONNECTIONS")
     
     # Security Settings (from env)
     secret_key: str = Field(alias="SECRET_KEY")
@@ -99,7 +101,7 @@ class Settings(BaseSettings):
     yolo_model_size: str = Field(default="yolov8n.pt", alias="YOLO_MODEL_SIZE")
     yolo_device: str = Field(default="cpu", alias="YOLO_DEVICE")
     auto_update_models: bool = Field(default=False, alias="AUTO_UPDATE_MODELS")
-    model_update_interval_hours: int = Field(default=24, alias="MODEL_UPDATE_INTERVAL_HOURS")
+    ml_model_update_interval_hours: int = Field(default=24, alias="MODEL_UPDATE_INTERVAL_HOURS")
     
     # Advanced Features
     enable_behavior_analysis: bool = Field(default=True, alias="ENABLE_BEHAVIOR_ANALYSIS")
@@ -117,6 +119,7 @@ class Settings(BaseSettings):
     
     # Logging and Monitoring
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    log_directory: str = Field(default="./storage/logs", alias="LOG_DIRECTORY")
     log_max_size: str = Field(default="10MB", alias="LOG_MAX_SIZE")
     log_backup_count: int = Field(default=5, alias="LOG_BACKUP_COUNT")
     enable_performance_monitoring: bool = Field(default=True, alias="ENABLE_PERFORMANCE_MONITORING")
@@ -124,7 +127,7 @@ class Settings(BaseSettings):
     
     # Development Settings (from env)
     enable_api_docs: bool = Field(default=True, alias="ENABLE_API_DOCS")
-    enable_reload: bool = Field(default=True, alias="ENABLE_RELOAD")
+    api_reload: bool = Field(default=True, alias="ENABLE_RELOAD")
     enable_profiling: bool = Field(default=False, alias="ENABLE_PROFILING")
     test_mode: bool = Field(default=False, alias="TEST_MODE")
     mock_cameras: bool = Field(default=False, alias="MOCK_CAMERAS")
@@ -144,7 +147,8 @@ class Settings(BaseSettings):
         "env_file": ".env",
         "env_file_encoding": "utf-8",
         "case_sensitive": False,
-        "extra": "ignore"
+        "extra": "ignore",
+        "protected_namespaces": ('settings_',)
     }
 
 def get_settings() -> Settings:

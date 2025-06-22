@@ -95,6 +95,8 @@ async def lifespan(app: FastAPI):
             repository = Repository(db)
             surveillance_service = SurveillanceService(repository)
             await surveillance_service.initialize()
+            # Register detection callback after service is initialized
+            surveillance_service.add_detection_callback(detection_callback)
         logger.info("Application startup completed")
         yield
     except Exception as e:
@@ -103,7 +105,7 @@ async def lifespan(app: FastAPI):
     finally:
         # Shutdown
         try:
-            if surveillance_service:
+            if SURVEILLANCE_SERVICE_AVAILABLE and surveillance_service:
                 await surveillance_service.cleanup()
             await shutdown_event()
             logger.info("Application shutdown completed")
@@ -527,9 +529,6 @@ async def detection_callback(surveillance_frame, detections):
             
     except Exception as e:
         print(f"Detection callback error: {e}")
-
-# Register detection callback
-surveillance_service.add_detection_callback(detection_callback)
 
 # Run server function
 def run_server():

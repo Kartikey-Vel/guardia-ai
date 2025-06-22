@@ -5,15 +5,20 @@ Pydantic models for type safety and validation
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Union
 from enum import Enum
-from pydantic import BaseModel, Field, validator, EmailStr
+from pydantic import BaseModel, Field, field_validator, EmailStr
 from bson import ObjectId
 import uuid
 
 class PyObjectId(ObjectId):
-    """Custom ObjectId type for Pydantic"""
+    """Custom ObjectId type for Pydantic v2"""
     @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        from pydantic_core import core_schema
+        return core_schema.no_info_after_validator_function(
+            cls.validate,
+            core_schema.str_schema(),
+            serialization=core_schema.to_string_ser_schema(),
+        )
 
     @classmethod
     def validate(cls, v):
@@ -22,8 +27,9 @@ class PyObjectId(ObjectId):
         return ObjectId(v)
 
     @classmethod
-    def __modify_schema__(cls, field_schema):
+    def __get_pydantic_json_schema__(cls, field_schema, handler):
         field_schema.update(type="string")
+        return field_schema
 
 class UserRole(str, Enum):
     OWNER = "owner"
@@ -58,10 +64,11 @@ class BaseMongoModel(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
 
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+        "json_encoders": {ObjectId: str}
+    }
 
 # User Models
 class UserBase(BaseModel):

@@ -72,7 +72,7 @@ class DatabaseManager:
     
     async def create_indexes(self) -> None:
         """Create database indexes for optimal performance"""
-        if not self.database:
+        if self.database is None:
             await self.connect()
         
         try:
