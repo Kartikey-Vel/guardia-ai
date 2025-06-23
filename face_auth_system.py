@@ -274,3 +274,258 @@ class FaceAuthSystem:
         except Exception as e:
             print(f"❌ Error deleting user: {e}")
             return False
+        
+    def train_face_model(self, user_id: str, additional_photos: List[np.ndarray] = None) -> Tuple[bool, str]:
+        """Train or improve face model for a specific user"""
+        try:
+            if user_id not in self.users:
+                return False, "User not found"
+            
+            user = self.users[user_id]
+            current_encodings = self.face_encodings.get(user_id, [])
+            
+            # Process additional photos if provided
+            new_encodings = []
+            if additional_photos:
+                for i, photo in enumerate(additional_photos):
+                    rgb_photo = cv2.cvtColor(photo, cv2.COLOR_BGR2RGB)
+                    face_locations = face_recognition.face_locations(rgb_photo)
+                    
+                    if len(face_locations) > 0:
+                        face_encodings = face_recognition.face_encodings(rgb_photo, face_locations)
+                        if len(face_encodings) > 0:
+                            new_encodings.append(face_encodings[0])
+            
+            # Analyze current encodings quality
+            if len(current_encodings) >= 2:
+                # Calculate diversity score of current encodings
+                diversity_scores = []
+                for i in range(len(current_encodings)):
+                    for j in range(i + 1, len(current_encodings)):
+                        distance = np.linalg.norm(current_encodings[i] - current_encodings[j])
+                        diversity_scores.append(distance)
+                
+                avg_diversity = np.mean(diversity_scores) if diversity_scores else 0
+                
+                # Remove similar encodings if we have too many
+                if len(current_encodings) > 5:
+                    # Keep the most diverse encodings
+                    filtered_encodings = self._filter_similar_encodings(current_encodings)
+                    self.face_encodings[user_id] = filtered_encodings
+                    current_encodings = filtered_encodings
+            
+            # Add new encodings
+            all_encodings = current_encodings + new_encodings
+            
+            # Final filtering and optimization
+            if len(all_encodings) > self.max_faces_per_user:
+                optimized_encodings = self._optimize_encoding_set(all_encodings)
+                self.face_encodings[user_id] = optimized_encodings
+            else:
+                self.face_encodings[user_id] = all_encodings
+            
+            user.face_encodings = self.face_encodings[user_id]
+            self.save_user_data()
+            
+            improvement_msg = f"Model trained with {len(new_encodings)} new samples. "
+            improvement_msg += f"Total encodings: {len(self.face_encodings[user_id])}"
+            
+            return True, improvement_msg
+            
+        except Exception as e:
+            return False, f"Training failed: {e}"
+    
+    def _filter_similar_encodings(self, encodings: List[np.ndarray], threshold: float = 0.3) -> List[np.ndarray]:
+        """Filter out very similar face encodings to improve diversity"""
+        if len(encodings) <= 2:
+            return encodings
+        
+        filtered = [encodings[0]]  # Always keep the first one
+        
+        for encoding in encodings[1:]:
+            # Check if this encoding is too similar to existing ones
+            is_diverse = True
+            for existing in filtered:
+                distance = np.linalg.norm(encoding - existing)
+                if distance < threshold:
+                    is_diverse = False
+                    break
+            
+            if is_diverse:
+                filtered.append(encoding)
+        
+        return filtered
+    
+    def _optimize_encoding_set(self, encodings: List[np.ndarray]) -> List[np.ndarray]:
+        """Select the most representative subset of encodings"""
+        if len(encodings) <= self.max_faces_per_user:
+            return encodings
+        
+        # Use k-means clustering to find representative encodings
+        try:
+            from sklearn.cluster import KMeans
+            
+            # Convert to array for clustering
+            encoding_array = np.array(encodings)
+            
+            # Cluster into max_faces_per_user groups
+            kmeans = KMeans(n_clusters=self.max_faces_per_user, random_state=42)
+            clusters = kmeans.fit_predict(encoding_array)
+            
+            # Select the encoding closest to each cluster center
+            optimized = []
+            for i in range(self.max_faces_per_user):
+                cluster_encodings = encoding_array[clusters == i]
+                if len(cluster_encodings) > 0:
+                    # Find encoding closest to cluster center
+                    center = kmeans.cluster_centers_[i]
+                    distances = [np.linalg.norm(enc - center) for enc in cluster_encodings]
+                    closest_idx = np.argmin(distances)
+                    optimized.append(cluster_encodings[closest_idx])
+            
+            return optimized
+            
+        except ImportError:
+            # Fallback: use simple diversity filtering
+            return self._filter_similar_encodings(encodings, threshold=0.4)[:self.max_faces_per_user]
+    
+    def analyze_user_model_quality(self, user_id: str) -> Dict[str, Any]:
+        """Analyze the quality of a user's face model"""
+        try:
+            if user_id not in self.users or user_id not in self.face_encodings:
+                return {"quality_score": 0, "recommendations": ["User not found or no face data"]}
+            
+            encodings = self.face_encodings[user_id]
+            user = self.users[user_id]
+            
+            # Calculate quality metrics
+            quality_metrics = {
+                "encoding_count": len(encodings),
+                "diversity_score": 0,
+                "consistency_score": 0,
+                "quality_score": 0,
+                "recommendations": []
+            }
+            
+            if len(encodings) < 2:
+                quality_metrics["recommendations"].append("Add more face photos for better recognition")
+                quality_metrics["quality_score"] = 20
+                return quality_metrics
+            
+            # Calculate diversity (how different the encodings are)
+            diversity_scores = []
+            for i in range(len(encodings)):
+                for j in range(i + 1, len(encodings)):
+                    distance = np.linalg.norm(encodings[i] - encodings[j])
+                    diversity_scores.append(distance)
+            
+            avg_diversity = np.mean(diversity_scores)
+            quality_metrics["diversity_score"] = min(100, avg_diversity * 100)
+            
+            # Calculate consistency (how well encodings cluster together)
+            consistency_scores = []
+            for encoding in encodings:
+                distances = [np.linalg.norm(encoding - other) for other in encodings if not np.array_equal(encoding, other)]
+                if distances:
+                    consistency_scores.append(1.0 / (1.0 + np.mean(distances)))
+            
+            avg_consistency = np.mean(consistency_scores) if consistency_scores else 0
+            quality_metrics["consistency_score"] = avg_consistency * 100
+            
+            # Overall quality score
+            quality_metrics["quality_score"] = (
+                (quality_metrics["diversity_score"] * 0.4) +
+                (quality_metrics["consistency_score"] * 0.4) +
+                (min(100, len(encodings) * 20) * 0.2)
+            )
+            
+            # Generate recommendations
+            if len(encodings) < 3:
+                quality_metrics["recommendations"].append("Add more face photos (recommended: 3-5)")
+            if quality_metrics["diversity_score"] < 50:
+                quality_metrics["recommendations"].append("Add photos from different angles and lighting")
+            if quality_metrics["consistency_score"] < 60:
+                quality_metrics["recommendations"].append("Current photos may be too different - check photo quality")
+            if quality_metrics["quality_score"] >= 80:
+                quality_metrics["recommendations"].append("Excellent model quality!")
+            
+            return quality_metrics
+            
+        except Exception as e:
+            return {"quality_score": 0, "recommendations": [f"Analysis failed: {e}"]}
+    
+    def batch_train_all_users(self) -> Dict[str, Any]:
+        """Train and optimize models for all users"""
+        results = {
+            "trained_users": 0,
+            "improved_users": 0,
+            "failed_users": 0,
+            "details": {}
+        }
+        
+        for user_id, user in self.users.items():
+            try:
+                # Analyze current model
+                quality_before = self.analyze_user_model_quality(user_id)
+                
+                # Retrain model (optimization only, no new photos)
+                success, message = self.train_face_model(user_id)
+                
+                if success:
+                    # Analyze improved model
+                    quality_after = self.analyze_user_model_quality(user_id)
+                    
+                    results["trained_users"] += 1
+                    if quality_after["quality_score"] > quality_before["quality_score"]:
+                        results["improved_users"] += 1
+                    
+                    results["details"][user_id] = {
+                        "status": "success",
+                        "quality_before": quality_before["quality_score"],
+                        "quality_after": quality_after["quality_score"],
+                        "message": message
+                    }
+                else:
+                    results["failed_users"] += 1
+                    results["details"][user_id] = {
+                        "status": "failed",
+                        "message": message
+                    }
+                    
+            except Exception as e:
+                results["failed_users"] += 1
+                results["details"][user_id] = {
+                    "status": "error", 
+                    "message": str(e)
+                }
+        
+        return results
+
+    def get_recognition_accuracy_stats(self) -> Dict[str, Any]:
+        """Get statistics about recognition accuracy"""
+        stats = {
+            "total_users": len(self.users),
+            "users_with_encodings": len(self.face_encodings),
+            "total_encodings": sum(len(encodings) for encodings in self.face_encodings.values()),
+            "average_encodings_per_user": 0,
+            "high_quality_users": 0,
+            "medium_quality_users": 0,
+            "low_quality_users": 0
+        }
+        
+        if stats["users_with_encodings"] > 0:
+            stats["average_encodings_per_user"] = stats["total_encodings"] / stats["users_with_encodings"]
+            
+            # Analyze quality distribution
+            for user_id in self.face_encodings.keys():
+                quality = self.analyze_user_model_quality(user_id)
+                score = quality["quality_score"]
+                
+                if score >= 80:
+                    stats["high_quality_users"] += 1
+                elif score >= 60:
+                    stats["medium_quality_users"] += 1
+                else:
+                    stats["low_quality_users"] += 1
+        
+        return stats

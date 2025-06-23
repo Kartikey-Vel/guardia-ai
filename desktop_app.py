@@ -47,6 +47,7 @@ sys.path.insert(0, str(project_root))
 # Import authentication system
 try:
     from face_auth_system import FaceAuthSystem, UserProfile
+    from user_dialogs import UserRegistrationDialog, UserManagementDialog
     FACE_AUTH_AVAILABLE = True
 except ImportError:
     FACE_AUTH_AVAILABLE = False

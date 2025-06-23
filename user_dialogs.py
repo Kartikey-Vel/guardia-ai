@@ -461,3 +461,505 @@ class UserManagementDialog:
     def _close_dialog(self):
         """Close the dialog"""
         self.dialog.destroy()
+
+class ModelTrainingDialog:
+    """Dialog for training and improving face recognition models"""
+    
+    def __init__(self, parent, auth_system, callback=None):
+        self.parent = parent
+        self.auth_system = auth_system
+        self.callback = callback
+        
+        # Training state
+        self.training_photos = []
+        self.selected_user = None
+        self.is_capturing = False
+        self.cap = None
+        self.current_frame = None
+        
+        self._create_dialog()
+        
+    def _create_dialog(self):
+        """Create the model training dialog"""
+        self.dialog = ctk.CTkToplevel(self.parent)
+        self.dialog.title("🧠 Face Model Training")
+        self.dialog.geometry("900x700")
+        self.dialog.transient(self.parent)
+        self.dialog.grab_set()
+        
+        # Configure grid
+        self.dialog.grid_columnconfigure(0, weight=1)
+        self.dialog.grid_rowconfigure(0, weight=1)
+        
+        # Main container
+        self.main_frame = ctk.CTkFrame(self.dialog)
+        self.main_frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        self.main_frame.grid_columnconfigure(1, weight=1)
+        self.main_frame.grid_rowconfigure(1, weight=1)
+        
+        # Title
+        title_label = ctk.CTkLabel(
+            self.main_frame,
+            text="🧠 Face Recognition Model Training",
+            font=ctk.CTkFont(size=24, weight="bold")
+        )
+        title_label.grid(row=0, column=0, columnspan=2, pady=20)
+        
+        # Left panel - User selection and controls
+        self.control_frame = ctk.CTkFrame(self.main_frame, width=300)
+        self.control_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 10), pady=(0, 10))
+        self.control_frame.grid_propagate(False)
+        
+        # User selection
+        user_label = ctk.CTkLabel(self.control_frame, text="👤 Select User:", font=ctk.CTkFont(weight="bold"))
+        user_label.pack(anchor="w", padx=15, pady=(15, 5))
+        
+        users = self.auth_system.list_users()
+        user_names = [f"{user.name} ({user.user_id})" for user in users]
+        
+        self.user_selector = ctk.CTkOptionMenu(
+            self.control_frame,
+            values=user_names if user_names else ["No users available"],
+            command=self._on_user_selected
+        )
+        self.user_selector.pack(fill="x", padx=15, pady=(0, 15))
+        
+        # Model quality display
+        self.quality_frame = ctk.CTkFrame(self.control_frame)
+        self.quality_frame.pack(fill="x", padx=15, pady=(0, 15))
+        
+        quality_title = ctk.CTkLabel(self.quality_frame, text="📊 Current Model Quality", font=ctk.CTkFont(weight="bold"))
+        quality_title.pack(pady=10)
+        
+        self.quality_text = ctk.CTkTextbox(self.quality_frame, height=150)
+        self.quality_text.pack(fill="both", padx=10, pady=(0, 10))
+        
+        # Training controls
+        self.training_controls = ctk.CTkFrame(self.control_frame)
+        self.training_controls.pack(fill="x", padx=15, pady=(0, 15))
+        
+        controls_title = ctk.CTkLabel(self.training_controls, text="🎯 Training Options", font=ctk.CTkFont(weight="bold"))
+        controls_title.pack(pady=10)
+        
+        self.optimize_button = ctk.CTkButton(
+            self.training_controls,
+            text="⚡ Optimize Current Model",
+            command=self._optimize_model,
+            height=35
+        )
+        self.optimize_button.pack(fill="x", padx=10, pady=5)
+        
+        self.add_photos_button = ctk.CTkButton(
+            self.training_controls,
+            text="📁 Add Photos from Files",
+            command=self._add_photos_from_files,
+            height=35
+        )
+        self.add_photos_button.pack(fill="x", padx=10, pady=5)
+        
+        self.capture_button = ctk.CTkButton(
+            self.training_controls,
+            text="📸 Capture New Photos",
+            command=self._toggle_camera,
+            height=35
+        )
+        self.capture_button.pack(fill="x", padx=10, pady=5)
+        
+        # Batch training
+        batch_frame = ctk.CTkFrame(self.control_frame)
+        batch_frame.pack(fill="x", padx=15, pady=(0, 15))
+        
+        batch_title = ctk.CTkLabel(batch_frame, text="🔄 Batch Operations", font=ctk.CTkFont(weight="bold"))
+        batch_title.pack(pady=10)
+        
+        self.batch_train_button = ctk.CTkButton(
+            batch_frame,
+            text="🚀 Train All Users",
+            command=self._batch_train,
+            height=35
+        )
+        self.batch_train_button.pack(fill="x", padx=10, pady=5)
+        
+        self.analyze_all_button = ctk.CTkButton(
+            batch_frame,
+            text="📊 Analyze All Models",
+            command=self._analyze_all,
+            height=35
+        )
+        self.analyze_all_button.pack(fill="x", padx=10, pady=5)
+        
+        # Right panel - Camera/photo display
+        self.display_frame = ctk.CTkFrame(self.main_frame)
+        self.display_frame.grid(row=1, column=1, sticky="nsew", padx=(10, 0), pady=(0, 10))
+        self.display_frame.grid_columnconfigure(0, weight=1)
+        self.display_frame.grid_rowconfigure(1, weight=1)
+        
+        # Display title
+        display_title = ctk.CTkLabel(
+            self.display_frame,
+            text="📷 Training Photos",
+            font=ctk.CTkFont(size=18, weight="bold")
+        )
+        display_title.grid(row=0, column=0, pady=15)
+        
+        # Camera/photo canvas
+        self.display_canvas = tk.Canvas(
+            self.display_frame,
+            bg="#2b2b2b",
+            highlightthickness=0
+        )
+        self.display_canvas.grid(row=1, column=0, sticky="nsew", padx=15, pady=(0, 15))
+        
+        # Photo controls
+        self.photo_controls = ctk.CTkFrame(self.display_frame)
+        self.photo_controls.grid(row=2, column=0, sticky="ew", padx=15, pady=(0, 15))
+        
+        self.capture_photo_button = ctk.CTkButton(
+            self.photo_controls,
+            text="📸 Capture Photo",
+            command=self._capture_photo,
+            state="disabled",
+            height=35
+        )
+        self.capture_photo_button.pack(side="left", padx=(0, 10), fill="x", expand=True)
+        
+        self.train_button = ctk.CTkButton(
+            self.photo_controls,
+            text="🧠 Train with Photos",
+            command=self._train_with_photos,
+            state="disabled",
+            height=35
+        )
+        self.train_button.pack(side="right", padx=(10, 0), fill="x", expand=True)
+        
+        # Close button
+        close_button = ctk.CTkButton(
+            self.main_frame,
+            text="✅ Close",
+            command=self._close_dialog,
+            height=40
+        )
+        close_button.grid(row=2, column=0, columnspan=2, pady=15)
+        
+        # Initialize with first user if available
+        if users:
+            self._on_user_selected(user_names[0])
+    
+    def _on_user_selected(self, selection):
+        """Handle user selection"""
+        try:
+            # Extract user_id from selection
+            user_id = selection.split("(")[-1].rstrip(")")
+            
+            users = self.auth_system.list_users()
+            self.selected_user = next((user for user in users if user.user_id == user_id), None)
+            
+            if self.selected_user:
+                self._update_quality_display()
+                
+        except Exception as e:
+            print(f"❌ User selection error: {e}")
+    
+    def _update_quality_display(self):
+        """Update the model quality display"""
+        if not self.selected_user:
+            return
+            
+        try:
+            quality = self.auth_system.analyze_user_model_quality(self.selected_user.user_id)
+            
+            self.quality_text.delete("0.0", "end")
+            
+            # Quality score with visual indicator
+            score = quality["quality_score"]
+            if score >= 80:
+                score_emoji = "🟢"
+            elif score >= 60:
+                score_emoji = "🟡"
+            else:
+                score_emoji = "🔴"
+            
+            quality_info = f"{score_emoji} Overall Quality: {score:.1f}/100\n\n"
+            quality_info += f"📊 Encoding Count: {quality['encoding_count']}\n"
+            quality_info += f"🔄 Diversity Score: {quality['diversity_score']:.1f}\n"
+            quality_info += f"🎯 Consistency Score: {quality['consistency_score']:.1f}\n\n"
+            
+            quality_info += "💡 Recommendations:\n"
+            for rec in quality["recommendations"]:
+                quality_info += f"• {rec}\n"
+            
+            self.quality_text.insert("0.0", quality_info)
+            
+        except Exception as e:
+            self.quality_text.delete("0.0", "end")
+            self.quality_text.insert("0.0", f"❌ Error analyzing quality: {e}")
+    
+    def _optimize_model(self):
+        """Optimize the current model without new photos"""
+        if not self.selected_user:
+            messagebox.showwarning("No User", "Please select a user first")
+            return
+            
+        try:
+            success, message = self.auth_system.train_face_model(self.selected_user.user_id)
+            
+            if success:
+                messagebox.showinfo("Optimization Complete", message)
+                self._update_quality_display()
+                if self.callback:
+                    self.callback()
+            else:
+                messagebox.showerror("Optimization Failed", message)
+                
+        except Exception as e:
+            messagebox.showerror("Error", f"Optimization failed: {e}")
+    
+    def _add_photos_from_files(self):
+        """Add training photos from files"""
+        if not self.selected_user:
+            messagebox.showwarning("No User", "Please select a user first")
+            return
+            
+        file_paths = filedialog.askopenfilenames(
+            title="Select Photos",
+            filetypes=[("Image files", "*.jpg *.jpeg *.png *.bmp")]
+        )
+        
+        if not file_paths:
+            return
+            
+        photos = []
+        for file_path in file_paths:
+            try:
+                img = cv2.imread(file_path)
+                if img is not None:
+                    photos.append(img)
+            except Exception as e:
+                print(f"❌ Error loading {file_path}: {e}")
+        
+        if photos:
+            self.training_photos.extend(photos)
+            self._update_photo_display()
+            self.train_button.configure(state="normal")
+    
+    def _toggle_camera(self):
+        """Toggle camera capture mode"""
+        if not self.is_capturing:
+            self._start_camera()
+        else:
+            self._stop_camera()
+    
+    def _start_camera(self):
+        """Start camera for photo capture"""
+        try:
+            if not self.selected_user:
+                messagebox.showwarning("No User", "Please select a user first")
+                return
+                
+            self.cap = cv2.VideoCapture(0)
+            if not self.cap.isOpened():
+                messagebox.showerror("Camera Error", "Could not open camera")
+                return
+            
+            self.is_capturing = True
+            self.capture_button.configure(text="🛑 Stop Camera")
+            self.capture_photo_button.configure(state="normal")
+            self._update_camera_feed()
+            
+        except Exception as e:
+            messagebox.showerror("Camera Error", f"Failed to start camera: {e}")
+    
+    def _stop_camera(self):
+        """Stop camera capture"""
+        self.is_capturing = False
+        if self.cap:
+            self.cap.release()
+            self.cap = None
+        
+        self.capture_button.configure(text="📸 Capture New Photos")
+        self.capture_photo_button.configure(state="disabled")
+        self._update_photo_display()
+    
+    def _update_camera_feed(self):
+        """Update camera feed display"""
+        if not self.is_capturing or not self.cap:
+            return
+            
+        try:
+            ret, frame = self.cap.read()
+            if ret:
+                self.current_frame = frame
+                
+                # Resize frame for display
+                display_frame = cv2.resize(frame, (400, 300))
+                rgb_frame = cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB)
+                img = Image.fromarray(rgb_frame)
+                photo = ImageTk.PhotoImage(img)
+                
+                # Update canvas
+                self.display_canvas.delete("all")
+                canvas_width = self.display_canvas.winfo_width()
+                canvas_height = self.display_canvas.winfo_height()
+                
+                if canvas_width > 1 and canvas_height > 1:
+                    x = (canvas_width - 400) // 2
+                    y = (canvas_height - 300) // 2
+                    self.display_canvas.create_image(x, y, anchor="nw", image=photo)
+                    self.display_canvas.image = photo  # Keep reference
+                
+                # Schedule next update
+                self.dialog.after(30, self._update_camera_feed)
+                
+        except Exception as e:
+            print(f"❌ Camera feed error: {e}")
+    
+    def _capture_photo(self):
+        """Capture a photo for training"""
+        if not self.current_frame is None:
+            self.training_photos.append(self.current_frame.copy())
+            self.train_button.configure(state="normal")
+            
+            # Visual feedback
+            self.capture_photo_button.configure(text="✅ Photo Captured!")
+            self.dialog.after(1000, lambda: self.capture_photo_button.configure(text="📸 Capture Photo"))
+    
+    def _update_photo_display(self):
+        """Update the photo display when not using camera"""
+        if len(self.training_photos) > 0:
+            # Show the last captured photo
+            last_photo = self.training_photos[-1]
+            display_photo = cv2.resize(last_photo, (400, 300))
+            rgb_photo = cv2.cvtColor(display_photo, cv2.COLOR_BGR2RGB)
+            img = Image.fromarray(rgb_photo)
+            photo = ImageTk.PhotoImage(img)
+            
+            self.display_canvas.delete("all")
+            canvas_width = self.display_canvas.winfo_width()
+            canvas_height = self.display_canvas.winfo_height()
+            
+            if canvas_width > 1 and canvas_height > 1:
+                x = (canvas_width - 400) // 2
+                y = (canvas_height - 300) // 2
+                self.display_canvas.create_image(x, y, anchor="nw", image=photo)
+                self.display_canvas.image = photo
+                
+                # Add counter text
+                self.display_canvas.create_text(
+                    canvas_width // 2, 20,
+                    text=f"Training Photos: {len(self.training_photos)}",
+                    fill="white",
+                    font=("Arial", 12, "bold")
+                )
+        else:
+            self.display_canvas.delete("all")
+            canvas_width = self.display_canvas.winfo_width()
+            canvas_height = self.display_canvas.winfo_height()
+            self.display_canvas.create_text(
+                canvas_width // 2, canvas_height // 2,
+                text="No training photos\nCapture or load photos to begin",
+                fill="white",
+                font=("Arial", 14),
+                justify="center"
+            )
+    
+    def _train_with_photos(self):
+        """Train the model with captured photos"""
+        if not self.selected_user or len(self.training_photos) == 0:
+            messagebox.showwarning("No Data", "Please select a user and capture/load photos first")
+            return
+            
+        try:
+            success, message = self.auth_system.train_face_model(
+                self.selected_user.user_id, 
+                self.training_photos
+            )
+            
+            if success:
+                messagebox.showinfo("Training Complete", message)
+                self.training_photos = []
+                self._update_quality_display()
+                self._update_photo_display()
+                self.train_button.configure(state="disabled")
+                if self.callback:
+                    self.callback()
+            else:
+                messagebox.showerror("Training Failed", message)
+                
+        except Exception as e:
+            messagebox.showerror("Error", f"Training failed: {e}")
+    
+    def _batch_train(self):
+        """Train all user models"""
+        try:
+            # Show progress dialog
+            progress_dialog = ctk.CTkToplevel(self.dialog)
+            progress_dialog.title("Batch Training")
+            progress_dialog.geometry("400x200")
+            progress_dialog.transient(self.dialog)
+            progress_dialog.grab_set()
+            
+            progress_label = ctk.CTkLabel(progress_dialog, text="Training all user models...")
+            progress_label.pack(pady=20)
+            
+            progress_bar = ctk.CTkProgressBar(progress_dialog)
+            progress_bar.pack(pady=20, padx=20, fill="x")
+            progress_bar.set(0)
+            
+            status_label = ctk.CTkLabel(progress_dialog, text="Starting...")
+            status_label.pack(pady=10)
+            
+            def run_batch_training():
+                try:
+                    results = self.auth_system.batch_train_all_users()
+                    
+                    # Close progress dialog
+                    progress_dialog.destroy()
+                    
+                    # Show results
+                    result_msg = f"Training Complete!\n\n"
+                    result_msg += f"✅ Trained: {results['trained_users']}\n"
+                    result_msg += f"📈 Improved: {results['improved_users']}\n"
+                    result_msg += f"❌ Failed: {results['failed_users']}\n"
+                    
+                    messagebox.showinfo("Batch Training Results", result_msg)
+                    
+                    if self.selected_user:
+                        self._update_quality_display()
+                    
+                    if self.callback:
+                        self.callback()
+                        
+                except Exception as e:
+                    progress_dialog.destroy()
+                    messagebox.showerror("Batch Training Error", f"Training failed: {e}")
+            
+            # Start training in thread
+            threading.Thread(target=run_batch_training, daemon=True).start()
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to start batch training: {e}")
+    
+    def _analyze_all(self):
+        """Analyze all user models"""
+        try:
+            stats = self.auth_system.get_recognition_accuracy_stats()
+            
+            analysis_msg = f"📊 Face Recognition Model Analysis\n\n"
+            analysis_msg += f"👥 Total Users: {stats['total_users']}\n"
+            analysis_msg += f"🧠 Users with Models: {stats['users_with_encodings']}\n"
+            analysis_msg += f"📈 Total Encodings: {stats['total_encodings']}\n"
+            analysis_msg += f"📊 Avg Encodings/User: {stats['average_encodings_per_user']:.1f}\n\n"
+            analysis_msg += f"Quality Distribution:\n"
+            analysis_msg += f"🟢 High Quality: {stats['high_quality_users']}\n"
+            analysis_msg += f"🟡 Medium Quality: {stats['medium_quality_users']}\n"
+            analysis_msg += f"🔴 Low Quality: {stats['low_quality_users']}\n"
+            
+            messagebox.showinfo("Model Analysis", analysis_msg)
+            
+        except Exception as e:
+            messagebox.showerror("Analysis Error", f"Failed to analyze models: {e}")
+    
+    def _close_dialog(self):
+        """Close the dialog and clean up"""
+        self._stop_camera()
+        self.dialog.destroy()
