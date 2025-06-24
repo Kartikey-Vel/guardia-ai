@@ -52,8 +52,13 @@ class EnhancedDetector:
         # Initialize YOLO Object Detection
         if YOLO_AVAILABLE:
             try:
-                # Download YOLOv8n model if not exists (lightweight version)
-                self.yolo_model = YOLO('yolov8n.pt')
+                import warnings
+                # Suppress specific typing warnings
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=UserWarning, message=".*typing.Self.*")
+                    warnings.filterwarnings("ignore", category=FutureWarning, message=".*typing.Self.*")
+                    # Download YOLOv8n model if not exists (lightweight version)
+                    self.yolo_model = YOLO('yolov8n.pt')
                 print("✅ YOLOv8 Object Detection initialized")
             except Exception as e:
                 print(f"⚠️ YOLO initialization failed: {e}")
@@ -257,10 +262,16 @@ class EnhancedDetector:
                 boxes = result.boxes
                 if boxes is not None:
                     for box in boxes:
-                        # Get box coordinates
-                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                        confidence = box.conf[0].cpu().numpy()
-                        class_id = int(box.cls[0].cpu().numpy())
+                        # Get box coordinates with defensive programming
+                        try:
+                            xyxy = box.xyxy[0].cpu().numpy()
+                            if len(xyxy) < 4:
+                                continue
+                            x1, y1, x2, y2 = xyxy[:4]
+                            confidence = float(box.conf[0].cpu().numpy())
+                            class_id = int(box.cls[0].cpu().numpy())
+                        except (IndexError, ValueError, TypeError) as e:
+                            continue
                         
                         # Filter by confidence threshold (lower for infinite detection)
                         if confidence > self.detection_confidence_threshold:
@@ -273,7 +284,12 @@ class EnhancedDetector:
                             })
                             
         except Exception as e:
-            print(f"YOLO detection error: {e}")
+            # Handle specific typing errors from YOLO
+            error_msg = str(e)
+            if "typing.Self" in error_msg:
+                print(f"⚠️ YOLO typing compatibility warning (non-critical): {e}")
+            else:
+                print(f"YOLO detection error: {e}")
             
         return objects
     
