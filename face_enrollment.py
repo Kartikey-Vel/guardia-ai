@@ -3,6 +3,7 @@
 Face Enrollment Module for Guardia AI
 Dedicated script for adding trusted users via webcam face scan + label
 """
+import sqlite3
 import cv2
 import sys
 import os
