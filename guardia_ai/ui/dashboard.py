@@ -13,51 +13,101 @@ import cv2
 import numpy as np
 import time
 import json
+import os
+import sys
+import subprocess
+import tempfile
+import glob
+import requests
 from datetime import datetime
 
 from ..detection.enhanced_detector import EnhancedDetector
 from ..detection.camera_manager import camera_manager
 from ..detection.camera_web_server import CameraWebServer
+from ..detection.surveillance import SurveillanceEngine
 import traceback
 
-class FaceMatchingThread(QThread):
-    """Background thread for real-time face matching with enhanced detection (faces + objects)"""
-    enhanced_results = Signal(object)  # enhanced detection results
+class SurveillanceThread(QThread):
+    """Background thread for comprehensive surveillance with enhanced detection, tracking, and behavior analysis"""
+    enhanced_results = Signal(object)  # surveillance detection results
+    alert_generated = Signal(object)  # alert events
     error_occurred = Signal(str)  # error message
     
-    def __init__(self, face_auth):
-        super().__init__()
+    def __init__(self, face_auth, parent=None):
+        super().__init__(parent)
         self.face_auth = face_auth
-        self.running = False
-        self.enhanced_detector = None
+        self._engine = None
+        self._running = False
+    
+    def _on_detection_result(self, result):
+        """Callback function to handle detection results from surveillance engine"""
+        try:
+            # Create enhanced results for compatibility with existing dashboard
+            enhanced_results = {
+                'frame': result.frame,
+                'faces': result.faces,
+                'objects': result.objects,
+                'known_faces': [f for f in result.faces if f.get('is_known', False)],
+                'unknown_faces': [f for f in result.faces if not f.get('is_known', False)],
+                'detection_time': result.processing_time_ms / 1000.0,
+                'face_count': len(result.faces),
+                'object_count': len(result.objects),
+                'threats': result.threats,
+                'behaviors': result.behaviors,
+                'zones': [{'name': zone, 'alert': True, 'alert_message': f'Violation in {zone}'} for zone in result.zones_violated],
+                'zones_violated': result.zones_violated,
+                'tracks': result.tracks,
+                'surveillance_data': result
+            }
+            
+            # Emit enhanced results
+            self.enhanced_results.emit(enhanced_results)
+            
+        except Exception as e:
+            self.error_occurred.emit(f"Error processing detection result: {str(e)}")
+    
+    def _on_alert_event(self, alert):
+        """Callback function to handle alert events from surveillance engine"""
+        try:
+            self.alert_generated.emit(alert)
+        except Exception as e:
+            self.error_occurred.emit(f"Error processing alert: {str(e)}")
     
     def run(self):
         try:
-            # Initialize enhanced detector
-            self.enhanced_detector = EnhancedDetector(face_auth=self.face_auth)
+            # Initialize surveillance engine
+            from ..detection.surveillance import SurveillanceEngine
+            self._engine = SurveillanceEngine(self.face_auth)
             
-            self.running = True
-            while self.running:
-                # Get frame from camera manager instead of direct camera access
-                frame = camera_manager.get_active_frame()
-                if frame is None:
-                    time.sleep(0.1)
-                    continue
-                    
-                # Run enhanced detection
-                results = self.enhanced_detector.enhanced_detection(frame)
-                
-                # Emit enhanced results
-                self.enhanced_results.emit(results)
-                    
-                time.sleep(0.1)  # Check every 100ms for smoother feed
-                
+            # Register callbacks
+            self._engine.add_result_callback(self._on_detection_result)
+            self._engine.add_alert_callback(self._on_alert_event)
+            
+            self._running = True
+            
+            # Start surveillance
+            self._engine.start_surveillance()
+            
+            # Keep thread alive while surveillance is running
+            while self._running and self._engine.is_running():
+                self.msleep(100)  # Sleep for 100ms
+            
         except Exception as e:
-            self.error_occurred.emit(f"Face matching error: {str(e)}")
+            import traceback
+            self.error_occurred.emit(str(e) + '\n' + traceback.format_exc())
+        finally:
+            if self._engine:
+                self._engine.stop_surveillance()
     
     def stop(self):
-        self.running = False
-        self.quit()
+        self._running = False
+        if self._engine:
+            self._engine.stop_surveillance()
+
+
+# Backward compatibility - keep FaceMatchingThread for existing code
+class FaceMatchingThread(SurveillanceThread):
+    pass
 
 class GuardiaDashboard(QWidget):
     # Signal emitted when dashboard is closed
@@ -73,6 +123,9 @@ class GuardiaDashboard(QWidget):
         self.live_analysis_active = False
         self.analysis_logs = []
         self.frame_count = 0
+        self.threat_count = 0
+        self.fps_timer = None
+        self.fps_start_time = None
         
         # Initialize camera manager with default webcam if no cameras are configured
         self._initialize_cameras()
@@ -80,19 +133,23 @@ class GuardiaDashboard(QWidget):
         self._build_ui()
         self._update_stats()
         
+        # Periodically update stats
+        self.stats_timer = QTimer(self)
+        self.stats_timer.timeout.connect(self._update_stats)
+        self.stats_timer.start(5000)
+
         # Start detection automatically
-        self._start_live_analysis()
+        QTimer.singleShot(1000, self._start_live_analysis)  # Start after 1 second delay
     
     def closeEvent(self, event):
         """Handle window close event"""
         # Stop any running live analysis
         if self.live_analysis_active:
-            self._stop_live_analysis()
-        
-        # Stop any running face matching thread
-        if self.face_matching_thread and self.face_matching_thread.running:
-            self.face_matching_thread.stop()
-            self.face_matching_thread.wait()
+            self.live_analysis_active = False  # Prevent auto-restart
+            if self.face_matching_thread:
+                self.face_matching_thread.stop()
+                self.face_matching_thread.wait()
+                self.face_matching_thread = None
         
         # Clean up any temporary files
         self._cleanup_temp_files()
@@ -105,20 +162,15 @@ class GuardiaDashboard(QWidget):
     
     def _cleanup_temp_files(self):
         """Clean up any temporary files created during operation"""
-        import os
-        import glob
+        import tempfile, glob, os
         
-        try:
-            # Remove any temporary log files that might be created
-            temp_files = glob.glob("guardia_ai_analysis_logs_*.txt")
-            for temp_file in temp_files:
-                # Only remove files older than 1 hour to keep recent ones
-                if os.path.getmtime(temp_file) < time.time() - 3600:
-                    os.remove(temp_file)
-                    self._add_log(f"🗑️ Cleaned up temp file: {temp_file}")
-        except Exception as e:
-            # Don't fail on cleanup errors
-            pass
+        temp_dir = tempfile.gettempdir()
+        for pattern in ["guardia_ai_*.jpg", "guardia_ai_*.png"]:
+            for f in glob.glob(os.path.join(temp_dir, pattern)):
+                try:
+                    os.remove(f)
+                except Exception:
+                    pass
     
     def _build_ui(self):
         # Apply enhanced modern dark theme with better visibility
@@ -351,28 +403,6 @@ class GuardiaDashboard(QWidget):
         """)
         self.qr_connection_btn.clicked.connect(self._show_qr_connection)
         
-        # Detection Control
-        self.live_analysis_btn = QPushButton("⏹ Stop Detection")
-        self.live_analysis_btn.setStyleSheet("""
-            QPushButton { 
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f44336, stop:1 #d32f2f);
-                color: white; 
-                border: none; 
-                border-radius: 10px; 
-                padding: 16px; 
-                font-size: 15px; 
-                font-weight: bold;
-                min-height: 24px;
-            } 
-            QPushButton:hover { 
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #F57C7C, stop:1 #f44336);
-            }
-            QPushButton:pressed { 
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #C62828, stop:1 #B71C1C);
-            }
-        """)
-        self.live_analysis_btn.clicked.connect(self._toggle_live_analysis)
-        
         # Export
         self.export_btn = QPushButton("💾 Export User Data")
         self.export_btn.setStyleSheet("""
@@ -427,7 +457,6 @@ class GuardiaDashboard(QWidget):
         features_layout.addWidget(self.manage_users_btn)
         features_layout.addWidget(self.camera_management_btn)  # New camera management
         features_layout.addWidget(self.qr_connection_btn)      # New QR setup
-        features_layout.addWidget(self.live_analysis_btn)      # Detection control
         features_layout.addWidget(self.export_btn)
         features_layout.addWidget(separator)
         features_layout.addWidget(self.logout_btn)
@@ -474,7 +503,7 @@ class GuardiaDashboard(QWidget):
         
         # Video controls
         video_controls = QHBoxLayout()
-        self.video_status = QLabel("� Detection Active")
+        self.video_status = QLabel("🟢 Detection Active")
         self.video_status.setStyleSheet("""
             font-weight: bold; 
             color: #4CAF50; 
@@ -713,21 +742,40 @@ class GuardiaDashboard(QWidget):
         p = convert_to_Qt_format.scaled(800, 600, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         return QPixmap.fromImage(p)
     
-    def _toggle_live_analysis(self):
-        """Toggle enhanced live analysis with video feed"""
-        if self.live_analysis_active:
-            self._stop_live_analysis()
-        else:
-            self._start_live_analysis()
-    
     def _start_live_analysis(self):
-        """Start live analysis"""
+        """Start live analysis automatically"""
         try:
-            self.live_analysis_active = True
-            self.live_analysis_btn.setText("🛑 Stop Detection")
-            self.live_analysis_btn.setStyleSheet("QPushButton { padding: 12px; font-size: 15px; background-color: #f44336; color: white; border: none; border-radius: 5px; font-weight: bold; } QPushButton:hover { background-color: #d32f2f; }")
+            if self.live_analysis_active:
+                return  # Already running
             
-            self.video_status.setText("� Detection Active")
+            # Check camera status first
+            active_camera = camera_manager.get_active_camera()
+            if not active_camera or not active_camera.is_active:
+                # Try to reconnect cameras
+                self._add_log("📹 No active camera found, attempting to reconnect...")
+                camera_manager.connect_all_cameras()
+                active_camera = camera_manager.get_active_camera()
+                
+                if not active_camera or not active_camera.is_active:
+                    self._add_log("❌ No camera available for surveillance")
+                    self.video_status.setText("🔴 No Camera")
+                    self.video_status.setStyleSheet("""
+                        font-weight: bold; 
+                        color: #ff0000; 
+                        font-size: 14px;
+                        background-color: #2d2d2d;
+                        padding: 6px 10px;
+                        border-radius: 6px;
+                        border: 2px solid #404040;
+                    """)
+                    self.video_feed.setText("❌ No Camera Available\n\n• Use Camera Management to add cameras\n• Check camera permissions\n• Verify camera is not in use by other apps")
+                    # Retry after 10 seconds
+                    QTimer.singleShot(10000, self._start_live_analysis)
+                    return
+                
+            self.live_analysis_active = True
+            
+            self.video_status.setText("🟢 Detection Active")
             self.video_status.setStyleSheet("""
                 font-weight: bold; 
                 color: #4CAF50; 
@@ -737,18 +785,18 @@ class GuardiaDashboard(QWidget):
                 border-radius: 6px;
                 border: 2px solid #404040;
             """)
-            
+
             self._add_log("🚀 Starting AI detection system...")
-            self._add_log("📹 Camera initializing...")
+            self._add_log(f"📹 Camera active: {active_camera.name}")
             self._add_log("🔧 Loading face detection models...")
             self._add_log("🔧 Loading object detection models...")
             
-            # Create and start face matching thread
-            self.face_matching_thread = FaceMatchingThread(self.face_auth)
+            # Create and start surveillance thread
+            self.face_matching_thread = SurveillanceThread(self.face_auth)
             self.face_matching_thread.enhanced_results.connect(self._on_enhanced_results)
             self.face_matching_thread.error_occurred.connect(self._on_analysis_error)
             self.face_matching_thread.start()
-            
+
             # Start FPS timer
             self.fps_timer = QTimer()
             self.fps_timer.timeout.connect(self._update_fps)
@@ -760,15 +808,18 @@ class GuardiaDashboard(QWidget):
             
         except Exception as e:
             self._add_log(f"❌ Failed to start enhanced analysis: {str(e)}")
+            self.live_analysis_active = False
             QMessageBox.critical(self, "Camera Error", f"Failed to start enhanced analysis:\n{str(e)}")
     
     def _stop_live_analysis(self):
         """Stop live analysis"""
+        if not self.live_analysis_active:
+            return
+            
+        was_active = self.live_analysis_active
         self.live_analysis_active = False
-        self.live_analysis_btn.setText("🔍 Start Detection")
-        self.live_analysis_btn.setStyleSheet("QPushButton { padding: 12px; font-size: 15px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; font-weight: bold; } QPushButton:hover { background-color: #45a049; }")
         
-        self.video_status.setText("� Detection Stopped")
+        self.video_status.setText("🟡 Detection Stopped")
         self.video_status.setStyleSheet("""
             font-weight: bold; 
             color: #ff9800; 
@@ -786,70 +837,97 @@ class GuardiaDashboard(QWidget):
             self.face_matching_thread.wait()
             self.face_matching_thread = None
         
-        if hasattr(self, 'fps_timer'):
+        if hasattr(self, 'fps_timer') and self.fps_timer:
             self.fps_timer.stop()
         
         # Reset video feed
         self.video_feed.clear()
-        self.video_feed.setText("🔍 AI Detection Stopped\n\n• Face Recognition\n• Object Detection\n• Threat Analysis\n\nClick 'Start Detection' to resume monitoring")
+        self.video_feed.setText("🔍 AI Detection Stopped\n\n• Face Recognition\n• Object Detection\n• Threat Analysis\n\nRestarting detection...")
         
         self._add_log("🛑 Detection system stopped")
+        
+        # Auto-restart after 3 seconds only if it was actively running (not during shutdown)
+        if was_active and hasattr(self, 'stats_timer') and self.stats_timer.isActive():
+            QTimer.singleShot(3000, self._start_live_analysis)
     
     def _on_enhanced_results(self, results):
-        """Handle enhanced analysis results with faces and objects"""
+        """Handle enhanced analysis results with faces, objects, tracks, behaviors, and zones"""
         self.frame_count += 1
-        
-        # Use the annotated frame from the enhanced detector
-        annotated_frame = results['frame']
-        
-        # Update video feed
-        pixmap = self._convert_cv_qt(annotated_frame)
-        self.video_feed.setPixmap(pixmap)
-        
-        # Process and log the results
-        face_count = results['face_count']
-        object_count = results['object_count']
-        known_faces = len(results['known_faces'])
-        unknown_faces = len(results['unknown_faces'])
-        threats = len(results['threats'])
-        
+        annotated_frame = results.get('frame')
+        if annotated_frame is not None:
+            pixmap = self._convert_cv_qt(annotated_frame)
+            self.video_feed.setPixmap(pixmap)
+
+        # Extract counts
+        face_count = results.get('face_count', 0)
+        object_count = results.get('object_count', 0)
+        known_faces = results.get('known_faces', [])
+        unknown_faces = results.get('unknown_faces', [])
+        threats = results.get('threats', [])
+        tracks = results.get('tracks', [])
+        behaviors = results.get('behaviors', [])
+        zones = results.get('zones', [])
+
         # Update detection stats display
-        self.detection_stats.setText(f"Faces: {face_count} | Objects: {object_count}")
-        
+        self.detection_stats.setText(f"Faces: {face_count} | Objects: {object_count} | Tracks: {len(tracks)}")
+
         # Update threat count
-        if threats > 0:
-            self.threat_count += threats
+        if threats:
+            self.threat_count += len(threats)
             self._update_threat_count()
-        
+
         # Log detections (not every frame to avoid spam)
-        if self.frame_count % 30 == 0:  # Log every 30 frames
-            summary = f"👁️ Frame {self.frame_count}: {face_count} faces ({known_faces} known, {unknown_faces} unknown), {object_count} objects"
-            if threats > 0:
-                summary += f", ⚠️ {threats} threats detected!"
+        if self.frame_count % 30 == 0:
+            summary = f"👁️ Frame {self.frame_count}: {face_count} faces ({len(known_faces)} known, {len(unknown_faces)} unknown), {object_count} objects, {len(tracks)} tracks"
+            if threats:
+                summary += f", ⚠️ {len(threats)} threats detected!"
+            if behaviors:
+                summary += f", 🧠 Behaviors: {', '.join([b['type'] for b in behaviors])}"
+            if zones:
+                summary += f", 🗺️ Zones: {', '.join([z['name'] for z in zones if z.get('alert')])}"
             self._add_log(summary)
-        
+
         # Log significant events
-        for face in results['known_faces']:
-            confidence_percent = face['confidence'] * 100
+        for face in known_faces:
+            confidence_percent = face.get('confidence', 0) * 100
             if confidence_percent > 70:
-                self._add_log(f"✅ RECOGNIZED: {face['identity']} (confidence: {confidence_percent:.1f}%)")
+                self._add_log(f"✅ RECOGNIZED: {face.get('identity', 'Unknown')} (confidence: {confidence_percent:.1f}%)")
             else:
-                self._add_log(f"⚠️ LOW CONFIDENCE: {face['identity']} (confidence: {confidence_percent:.1f}%)")
-        
+                self._add_log(f"⚠️ LOW CONFIDENCE: {face.get('identity', 'Unknown')} (confidence: {confidence_percent:.1f}%)")
+
         # Log unknown faces
-        if unknown_faces > 0 and self.frame_count % 60 == 0:  # Log unknown faces every 60 frames
-            self._add_log(f"👤 UNKNOWN: {unknown_faces} unrecognized face(s) detected")
-        
+        if unknown_faces and self.frame_count % 60 == 0:
+            self._add_log(f"👤 UNKNOWN: {len(unknown_faces)} unrecognized face(s) detected")
+
         # Log threats immediately
-        for threat in results['threats']:
-            if threat['type'] == 'unknown_face':
-                self._add_log(f"🚨 THREAT: Unknown face detected (confidence: {threat['confidence']*100:.1f}%)")
-            elif threat['type'] == 'suspicious_object':
-                self._add_log(f"🚨 THREAT: Suspicious object detected - {threat['class']} (confidence: {threat['confidence']*100:.1f}%)")
-        
+        for threat in threats:
+            ttype = threat.get('type')
+            if ttype == 'unknown_face':
+                self._add_log(f"🚨 THREAT: Unknown face detected (confidence: {threat.get('confidence',0)*100:.1f}%)")
+            elif ttype == 'suspicious_object':
+                self._add_log(f"🚨 THREAT: Suspicious object detected - {threat.get('class','?')} (confidence: {threat.get('confidence',0)*100:.1f}%)")
+            elif ttype == 'intrusion':
+                self._add_log(f"🚨 INTRUSION: {threat.get('description','Intrusion detected')}")
+            elif ttype == 'aggression':
+                self._add_log(f"🚨 AGGRESSION: {threat.get('description','Aggressive behavior detected')}")
+            elif ttype == 'abnormal_motion':
+                self._add_log(f"🚨 ANOMALY: Abnormal motion detected")
+
+        # Log behaviors
+        for behavior in behaviors:
+            btype = behavior.get('type')
+            desc = behavior.get('description', btype)
+            if btype in ['loitering', 'intrusion', 'crowd', 'line_crossing', 'aggression', 'abnormal_motion']:
+                self._add_log(f"🧠 BEHAVIOR: {desc}")
+
+        # Log zone alerts
+        for zone in zones:
+            if zone.get('alert'):
+                self._add_log(f"🗺️ ZONE ALERT: {zone.get('name','Zone')} - {zone.get('alert_message','Alert!')}")
+
         # Log interesting objects (occasionally)
-        if object_count > 0 and self.frame_count % 90 == 0:  # Log objects every 90 frames
-            object_list = [obj['class'] for obj in results['objects']]
+        if object_count > 0 and self.frame_count % 90 == 0:
+            object_list = [obj.get('class','?') for obj in results.get('objects',[])]
             unique_objects = list(set(object_list))
             self._add_log(f"🔍 OBJECTS: {', '.join(unique_objects)}")
     
@@ -864,8 +942,29 @@ class GuardiaDashboard(QWidget):
     def _on_analysis_error(self, error_message):
         """Handle analysis errors"""
         self._add_log(f"❌ ERROR: {error_message}")
-        self._stop_live_analysis()
-        QMessageBox.critical(self, "Analysis Error", error_message)
+        
+        # Check if it's a camera error
+        if "camera" in error_message.lower() or "frame" in error_message.lower():
+            self._add_log("📹 Camera issue detected - checking camera setup...")
+            # Don't auto-restart for camera issues to avoid endless loop
+            self.live_analysis_active = False
+            self.video_status.setText("🔴 Camera Error")
+            self.video_status.setStyleSheet("""
+                font-weight: bold; 
+                color: #ff0000; 
+                font-size: 14px;
+                background-color: #2d2d2d;
+                padding: 6px 10px;
+                border-radius: 6px;
+                border: 2px solid #404040;
+            """)
+            self.video_feed.setText("❌ Camera Connection Error\n\n• No camera available\n• Check camera management\n• Verify camera permissions\n\nUse Camera Management to add cameras")
+        else:
+            self._stop_live_analysis()
+            
+        # Show error to user but don't automatically restart on errors
+        QMessageBox.warning(self, "Analysis Error", f"Surveillance error: {error_message}")
+    
     
     def _update_fps(self):
         """Update FPS display"""
@@ -994,6 +1093,7 @@ class GuardiaDashboard(QWidget):
             
             # Stop live analysis if running
             if self.live_analysis_active:
+                self.live_analysis_active = False  # Prevent auto-restart
                 self._stop_live_analysis()
             
             # Close dashboard and return to login
@@ -1023,8 +1123,11 @@ class GuardiaDashboard(QWidget):
     def _initialize_cameras(self):
         """Initialize camera manager with default cameras if none exist"""
         try:
+            self._add_log("🔧 Initializing camera system...")
+            
             # Check if there are any cameras already configured
             if not camera_manager.get_all_cameras():
+                self._add_log("📹 No cameras configured, scanning for available cameras...")
                 # Scan for local webcams and add the first one found
                 available_cameras = camera_manager.scan_local_cameras()
                 if available_cameras:
@@ -1036,12 +1139,28 @@ class GuardiaDashboard(QWidget):
                         first_cam['name'],
                         first_cam['description']
                     )
+                    self._add_log(f"✅ Added camera: {first_cam['name']}")
+                else:
+                    self._add_log("❌ No cameras found during scan")
             
             # Connect to all available cameras
+            self._add_log("🔗 Connecting to cameras...")
             camera_manager.connect_all_cameras()
             
+            # Verify connection
+            status = camera_manager.get_camera_status()
+            active_camera = camera_manager.get_active_camera()
+            
+            if active_camera and active_camera.is_active:
+                self._add_log(f"✅ Camera connected successfully: {active_camera.name}")
+            else:
+                self._add_log("⚠️ Camera connection failed or no active camera")
+            
         except Exception as e:
-            print(f"Error initializing cameras: {e}")
+            error_msg = f"Error initializing cameras: {e}"
+            print(error_msg)
+            if hasattr(self, '_add_log'):
+                self._add_log(f"❌ {error_msg}")
 
 class QRConnectionDialog(QDialog):
     """Dialog for QR-based camera setup and connection - CareCam style"""
