@@ -408,6 +408,32 @@ config_*.json
 !.env.example # If you have an example template, don't ignore it
 
 # Google Cloud Credentials
-*.json # Ignores all JSON files, be specific if needed e.g. service-account-key.json
+# Commented out general JSON ignore to allow specific JSON files
+# *.json # Ignores all JSON files, be specific if needed e.g. service-account-key.json
 service-account-key.json
 gaurdia-ai-6a9c5b01e92e.json # Specific service account key file
+
+# User data exports (exclude from repository)
+guardia_ai_users_*.json
+*_export.json
+exports/
+
+# Analysis log files (exclude from repository)
+guardia_ai_analysis_logs_*.txt
+analysis_logs/
+
+# Environment and credentials (security)
+.env
+*.env
+credentials/
+config/google-credentials.json
+
+# Temporary test files
+test_*.py.tmp
+temp_*
+*.tmp
+
+# Model weights (large files)
+*.pt
+*.onnx
+models/
