@@ -18,6 +18,13 @@ torchvision>=0.15.0 # Computer vision models
 # Web Interface
 flask>=2.3.0
 
+# IP Camera & QR Code Support
+qrcode>=7.4.0       # QR code generation
+Pillow>=10.0.0      # Enhanced image processing
+requests>=2.31.0    # HTTP requests for IP cameras
+python-vlc>=3.0.0   # VLC for RTSP streams (optional)
+netifaces>=0.11.0   # Network interface detection
+
 # Optional: Enhanced Features
 pillow>=10.0.0  # Image processing
 requests>=2.31.0  # HTTP requests

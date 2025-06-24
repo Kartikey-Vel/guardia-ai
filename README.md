@@ -12,6 +12,9 @@ Developed by **Tackle Studioz**, **Guardia AI** is a next-generation, real-time 
 - 🔐 **Multi-layered Authentication**  
   Supports face authentication and trusted user management.
 
+- 📷 **Smart Camera Management**  
+  Supports multiple camera sources: webcams, IP cameras, RTSP streams, and QR code onboarding for smart cameras.
+
 - 🎥 **Multimodal Sensor Input**  
   Processes data from video, audio, and motion sensors.
 
