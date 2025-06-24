@@ -293,27 +293,15 @@ class SurveillanceEngine:
                 # Process frame
                 detection_result = self._process_frame(frame)
                 
-                # Analyze behaviors
-                behaviors = self.behavior_analyzer.analyze_frame(
-                    frame, detection_result.objects, detection_result.faces
-                )
-                detection_result.behaviors = behaviors
-                
-                # Check zone violations
-                zones_violated = self.zone_manager.check_violations(
-                    detection_result.objects + detection_result.faces
-                )
-                detection_result.zones_violated = zones_violated
-                
-                # Generate alerts
-                self._generate_alerts(detection_result)
-                
                 # Call result callbacks
                 for callback in self.result_callbacks:
                     try:
                         callback(detection_result)
                     except Exception as e:
                         self.logger.error(f"Error in result callback: {e}")
+                
+                # Generate alerts
+                self._generate_alerts(detection_result)
                 
                 # Update performance metrics
                 self._update_performance_metrics()
@@ -351,10 +339,7 @@ class SurveillanceEngine:
         )
         
         # Check zone violations
-        zones_violated = []
-        for obj in enhanced_results.get('objects', []):
-            violations = self.zone_manager.check_object_in_zones(obj)
-            zones_violated.extend(violations)
+        zones_violated = self.zone_manager.check_violations(enhanced_results.get('objects', []))
         
         # Create detection result
         result = DetectionResult(

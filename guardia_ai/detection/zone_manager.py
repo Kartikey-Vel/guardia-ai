@@ -305,7 +305,17 @@ class ZoneManager:
     
     def _calculate_intersection(self, bbox: List[int], mask: np.ndarray) -> float:
         """Calculate intersection ratio between bounding box and zone mask"""
-        x, y, w, h = bbox
+        if len(bbox) < 4:
+            return 0.0
+        
+        try:
+            x, y, w, h = [int(val) for val in bbox[:4]]
+        except (ValueError, TypeError):
+            return 0.0
+        
+        # Validate bbox coordinates
+        if x < 0 or y < 0 or w <= 0 or h <= 0:
+            return 0.0
         
         # Ensure coordinates are within mask bounds
         x = max(0, min(x, mask.shape[1] - 1))

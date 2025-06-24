@@ -298,8 +298,14 @@ class BehaviorAnalyzer:
     
     def _get_bbox_center(self, bbox: List[int]) -> Tuple[int, int]:
         """Get center point of bounding box"""
-        x, y, w, h = bbox
-        return (x + w // 2, y + h // 2)
+        if len(bbox) < 4:
+            return (0, 0)
+        
+        try:
+            x, y, w, h = [int(val) for val in bbox[:4]]
+            return (x + w // 2, y + h // 2)
+        except (ValueError, TypeError):
+            return (0, 0)
     
     def _calculate_distance(self, pos1: Tuple[int, int], pos2: Tuple[int, int]) -> float:
         """Calculate Euclidean distance between two points"""
@@ -458,7 +464,26 @@ class BehaviorAnalyzer:
             return 0.0
         
         try:
-            x, y, w, h = bbox
+            # Ensure bbox values are integers
+            if len(bbox) < 4:
+                return 0.0
+            
+            x, y, w, h = [int(val) for val in bbox[:4]]
+            
+            # Validate bbox coordinates
+            if x < 0 or y < 0 or w <= 0 or h <= 0:
+                return 0.0
+            
+            # Ensure we don't go out of frame bounds
+            frame_h, frame_w = frame.shape[:2]
+            x = max(0, min(x, frame_w - 1))
+            y = max(0, min(y, frame_h - 1))
+            w = min(w, frame_w - x)
+            h = min(h, frame_h - y)
+            
+            if w <= 0 or h <= 0:
+                return 0.0
+            
             person_roi = frame[y:y+h, x:x+w]
             
             if person_roi.size == 0:
@@ -647,7 +672,26 @@ class BehaviorAnalyzer:
     def _analyze_person_pose(self, frame: np.ndarray, bbox: List[int]) -> Optional[Dict[str, Any]]:
         """Analyze individual person's pose for behavioral indicators"""
         try:
-            x, y, w, h = bbox
+            # Ensure bbox values are integers
+            if len(bbox) < 4:
+                return None
+            
+            x, y, w, h = [int(val) for val in bbox[:4]]
+            
+            # Validate bbox coordinates
+            if x < 0 or y < 0 or w <= 0 or h <= 0:
+                return None
+            
+            # Ensure we don't go out of frame bounds
+            frame_h, frame_w = frame.shape[:2]
+            x = max(0, min(x, frame_w - 1))
+            y = max(0, min(y, frame_h - 1))
+            w = min(w, frame_w - x)
+            h = min(h, frame_h - y)
+            
+            if w <= 0 or h <= 0:
+                return None
+            
             person_roi = frame[y:y+h, x:x+w]
             
             if person_roi.size == 0:
