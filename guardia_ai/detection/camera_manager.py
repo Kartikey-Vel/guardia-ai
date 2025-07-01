@@ -80,14 +80,33 @@ class CameraSource:
     
     def get_frame(self):
         """Get the latest frame from the camera"""
-        if self.cap and self.is_active:
+        if not self.cap or not self.is_active:
+            # Try to reconnect if not active
+            if not self.connect():
+                return self.last_frame
+        
+        try:
             ret, frame = self.cap.read()
-            if ret:
+            if ret and frame is not None:
                 self.last_frame = frame
+                self.connection_status = "connected"
+                self.error_message = ""
                 return frame
             else:
                 self.connection_status = "error"
                 self.error_message = "Failed to read frame"
+                # Try to reconnect
+                self.disconnect()
+                time.sleep(0.1)
+                if self.connect():
+                    ret, frame = self.cap.read()
+                    if ret and frame is not None:
+                        self.last_frame = frame
+                        return frame
+        except Exception as e:
+            self.connection_status = "error"
+            self.error_message = str(e)
+            
         return self.last_frame
     
     def to_dict(self):
@@ -302,8 +321,22 @@ class CameraManager:
     def get_active_frame(self):
         """Get frame from the active camera"""
         active_camera = self.get_active_camera()
-        if active_camera and active_camera.is_active:
-            return active_camera.get_frame()
+        if active_camera:
+            frame = active_camera.get_frame()
+            if frame is not None:
+                return frame
+            else:
+                # If frame is None, try to reconnect camera
+                print(f"⚠️ Camera {active_camera.name} returned None frame, attempting reconnect...")
+                if active_camera.connect():
+                    frame = active_camera.get_frame()
+                    if frame is not None:
+                        print(f"✅ Camera {active_camera.name} reconnected successfully")
+                        return frame
+                    else:
+                        print(f"❌ Camera {active_camera.name} still not providing frames after reconnect")
+                else:
+                    print(f"❌ Failed to reconnect camera {active_camera.name}")
         return None
     
     def get_all_cameras(self):

@@ -1147,20 +1147,41 @@ class GuardiaDashboard(QWidget):
             self._add_log("🔗 Connecting to cameras...")
             camera_manager.connect_all_cameras()
             
-            # Verify connection
-            status = camera_manager.get_camera_status()
-            active_camera = camera_manager.get_active_camera()
-            
-            if active_camera and active_camera.is_active:
-                self._add_log(f"✅ Camera connected successfully: {active_camera.name}")
-            else:
-                self._add_log("⚠️ Camera connection failed or no active camera")
+            # Give cameras time to initialize
+            QTimer.singleShot(500, self._verify_camera_connection)
             
         except Exception as e:
             error_msg = f"Error initializing cameras: {e}"
             print(error_msg)
             if hasattr(self, '_add_log'):
                 self._add_log(f"❌ {error_msg}")
+    
+    def _verify_camera_connection(self):
+        """Verify camera connection after initialization"""
+        try:
+            status = camera_manager.get_camera_status()
+            active_camera = camera_manager.get_active_camera()
+            
+            if active_camera and active_camera.is_active:
+                self._add_log(f"✅ Camera connected successfully: {active_camera.name}")
+                
+                # Test frame capture
+                test_frame = camera_manager.get_active_frame()
+                if test_frame is not None:
+                    self._add_log("📹 Camera frame test successful")
+                else:
+                    self._add_log("⚠️ Camera frame test failed - attempting reconnection")
+                    # Try to reconnect
+                    active_camera.disconnect()
+                    if active_camera.connect():
+                        self._add_log("✅ Camera reconnected successfully")
+                    else:
+                        self._add_log("❌ Camera reconnection failed")
+            else:
+                self._add_log("⚠️ Camera connection failed or no active camera")
+                
+        except Exception as e:
+            self._add_log(f"❌ Camera verification error: {e}")
 
 class QRConnectionDialog(QDialog):
     """Dialog for QR-based camera setup and connection - CareCam style"""

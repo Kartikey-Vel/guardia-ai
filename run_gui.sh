@@ -24,6 +24,6 @@ python -c "import ultralytics, mediapipe, cv2, numpy, PySide6" 2>/dev/null || {
 
 echo "🚀 Launching Enhanced Dashboard..."
 # Launch the enhanced application
-python -m guardia_ai.main
+python quick_start.py
 
 echo "👋 Guardia AI session ended."

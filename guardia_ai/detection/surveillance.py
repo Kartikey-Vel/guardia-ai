@@ -273,6 +273,8 @@ class SurveillanceEngine:
         target_frame_time = 1.0 / self.config['performance']['target_fps']
         no_frame_count = 0
         max_no_frame_count = 50  # Stop after 50 consecutive failed frame reads (5 seconds at 10fps)
+        reconnect_attempts = 0
+        max_reconnect_attempts = 3
         
         while self.running:
             try:
@@ -282,13 +284,24 @@ class SurveillanceEngine:
                 frame = camera_manager.get_active_frame()
                 if frame is None:
                     no_frame_count += 1
+                    self.logger.warning(f"No frame received (attempt {no_frame_count}/{max_no_frame_count})")
+                    
                     if no_frame_count >= max_no_frame_count:
-                        self.logger.error("❌ Camera disconnected - no frames for extended period")
-                        break
+                        if reconnect_attempts < max_reconnect_attempts:
+                            self.logger.warning(f"🔄 Attempting camera reconnection ({reconnect_attempts + 1}/{max_reconnect_attempts})")
+                            camera_manager.connect_all_cameras()
+                            reconnect_attempts += 1
+                            no_frame_count = 0  # Reset counter
+                            time.sleep(1)  # Wait a bit before retrying
+                            continue
+                        else:
+                            self.logger.error("❌ Camera disconnected - max reconnection attempts reached")
+                            break
                     time.sleep(0.1)
                     continue
                 else:
                     no_frame_count = 0  # Reset counter on successful frame
+                    reconnect_attempts = 0  # Reset reconnection attempts
                 
                 # Process frame
                 detection_result = self._process_frame(frame)
