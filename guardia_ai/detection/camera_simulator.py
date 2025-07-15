@@ -143,61 +143,59 @@ class CameraSimulator:
             print(f"Error saving simulation config: {e}")
     
     def start_simulation(self, mode: SimulationMode, source: Optional[str] = None):
-        """Start camera simulation"""
+        """Start camera simulation (optimized for low memory)"""
         self.current_mode = mode
         self.running = True
         self.start_time = time.time()
         self.frames_generated = 0
-        
-        # Initialize based on mode
+        # Use lower resolution for low-memory systems
         if mode == SimulationMode.VIDEO_FILE:
             if source and os.path.exists(source):
                 self.video_capture = cv2.VideoCapture(source)
+                self.video_capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                self.video_capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
                 print(f"📹 Playing video file: {source}")
             else:
                 print("❌ Video file not found, switching to synthetic mode")
                 self.current_mode = SimulationMode.SYNTHETIC
-        
         elif mode == SimulationMode.WEBCAM_PLAYBACK:
             self.video_capture = cv2.VideoCapture(0)
+            self.video_capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self.video_capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             print("📹 Using webcam input")
-        
         elif mode == SimulationMode.SYNTHETIC:
             self._initialize_synthetic_scene()
             print("🎨 Generating synthetic scene")
-        
         elif mode == SimulationMode.MULTI_CAMERA:
             self._initialize_multi_camera()
             print("📹 Multi-camera simulation active")
-        
         elif mode == SimulationMode.TEST_PATTERNS:
             print("🔧 Generating test patterns")
-        
         print(f"🚀 Camera simulation started ({mode.value})")
     
     def stop_simulation(self):
-        """Stop camera simulation"""
+        """Stop camera simulation and release resources"""
         self.running = False
-        if self.video_capture:
+        if hasattr(self, 'video_capture') and self.video_capture:
             self.video_capture.release()
+            self.video_capture = None
+        self.current_frame = None
         print("⏹️ Camera simulation stopped")
     
     def get_frame(self) -> Optional[np.ndarray]:
-        """Get next simulated frame"""
+        """Get next simulated frame (optimized for low memory)"""
         if not self.running:
             return None
-        
         frame = None
-        
         if self.current_mode == SimulationMode.VIDEO_FILE:
             frame = self._get_video_frame()
-        
         elif self.current_mode == SimulationMode.WEBCAM_PLAYBACK:
             frame = self._get_webcam_frame()
-        
         elif self.current_mode == SimulationMode.SYNTHETIC:
             frame = self._generate_synthetic_frame()
-        
+        # Only keep one frame in memory at a time
+        self.current_frame = frame
+        return frame
         elif self.current_mode == SimulationMode.MULTI_CAMERA:
             frame = self._get_multi_camera_frame()
         

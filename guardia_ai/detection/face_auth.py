@@ -1,16 +1,26 @@
 """
 Face Authentication: Detection, Embedding, Matching
+Optimized for low memory usage and speed.
 """
 import numpy as np
 import sqlite3
-import cv2
-from insightface.app import FaceAnalysis
+import gc
+
+# Lazy import for heavy modules
+def get_face_app():
+    try:
+        from insightface.app import FaceAnalysis
+        app = FaceAnalysis(name='buffalo_l', providers=['CPUExecutionProvider'])
+        app.prepare(ctx_id=0, det_size=(160, 160))  # Lowered det_size for less RAM
+        return app
+    except ImportError:
+        print("⚠️ InsightFace not available. Face recognition disabled.")
+        return None
 
 class FaceAuthenticator:
     def __init__(self, db_path="guardia_ai/storage/user_db.sqlite"):
         self.db_path = db_path
-        self.face_app = FaceAnalysis(name='buffalo_l', providers=['CPUExecutionProvider'])
-        self.face_app.prepare(ctx_id=0, det_size=(224, 224))
+        self.face_app = None  # Lazy-load
         self._ensure_db()
 
     def _ensure_db(self):
@@ -31,7 +41,6 @@ class FaceAuthenticator:
             emb = self.get_embedding(face_img)
             if emb is None:
                 return False
-        
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         emb_bytes = emb.tobytes() if emb is not None else None
@@ -39,17 +48,22 @@ class FaceAuthenticator:
                   (label, pin, emb_bytes))
         conn.commit()
         conn.close()
+        gc.collect()
         return True
 
     def verify_pin(self, pin):
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
-        c.execute("SELECT * FROM users WHERE pin=?", (pin,))
+        c.execute("SELECT 1 FROM users WHERE pin=? LIMIT 1", (pin,))
         user = c.fetchone()
         conn.close()
         return user is not None
 
     def get_embedding(self, img):
+        if self.face_app is None:
+            self.face_app = get_face_app()
+        if self.face_app is None:
+            return None
         faces = self.face_app.get(img)
         if not faces:
             return None
@@ -62,16 +76,19 @@ class FaceAuthenticator:
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         c.execute("SELECT id, label, embedding FROM users")
-        users = c.fetchall()
-        conn.close()
-        for uid, label, emb_blob in users:
-            if emb_blob is None:  # Skip users without face embeddings
+        best_score = 0
+        best_user = None
+        for uid, label, emb_blob in c.fetchall():
+            if emb_blob is None:
                 continue
             db_emb = np.frombuffer(emb_blob, dtype=np.float32)
-            sim = self.cosine_similarity(emb, db_emb)
-            if sim > threshold:
-                return {"id": uid, "label": label, "score": sim}
-        return None
+            score = np.dot(emb, db_emb) / (np.linalg.norm(emb) * np.linalg.norm(db_emb) + 1e-8)
+            if score > best_score and score > threshold:
+                best_score = score
+                best_user = {"id": uid, "label": label, "score": float(score)}
+        conn.close()
+        gc.collect()
+        return best_user
 
     @staticmethod
     def cosine_similarity(a, b):

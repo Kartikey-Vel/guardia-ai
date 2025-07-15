@@ -34,20 +34,15 @@ class CameraSource:
         self.error_message = ""
         
     def connect(self):
-        """Connect to the camera source"""
+        """Connect to the camera source (optimized for low memory)"""
         try:
             if self.source_type == 'webcam':
                 self.cap = cv2.VideoCapture(int(self.source_path))
-            else:  # IP camera or RTSP
-                self.cap = cv2.VideoCapture(self.source_path)
-            
-            if self.cap and self.cap.isOpened():
-                # Set camera properties for better performance
                 self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
                 self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-                self.cap.set(cv2.CAP_PROP_FPS, 30)
-                
-                # Test frame capture
+            else:
+                self.cap = cv2.VideoCapture(self.source_path)
+            if self.cap and self.cap.isOpened():
                 ret, frame = self.cap.read()
                 if ret:
                     self.is_active = True
@@ -63,14 +58,13 @@ class CameraSource:
                 self.connection_status = "failed"
                 self.error_message = "Failed to open camera"
                 return False
-                
         except Exception as e:
             self.connection_status = "error"
             self.error_message = str(e)
             return False
     
     def disconnect(self):
-        """Disconnect from the camera source"""
+        """Disconnect from the camera source and release memory"""
         if self.cap:
             self.cap.release()
             self.cap = None
@@ -79,12 +73,10 @@ class CameraSource:
         self.last_frame = None
     
     def get_frame(self):
-        """Get the latest frame from the camera"""
+        """Get the latest frame from the camera (optimized for low memory)"""
         if not self.cap or not self.is_active:
-            # Try to reconnect if not active
             if not self.connect():
                 return self.last_frame
-        
         try:
             ret, frame = self.cap.read()
             if ret and frame is not None:
@@ -244,11 +236,9 @@ class CameraManager:
         return qr_cv2, connection_info
     
     def scan_local_cameras(self):
-        """Scan for available local cameras (webcams)"""
+        """Scan for available local cameras (webcams) - optimized for low memory (max 2)"""
         available_cameras = []
-        
-        # Check up to 10 possible camera indices
-        for i in range(10):
+        for i in range(2):
             cap = cv2.VideoCapture(i)
             if cap.isOpened():
                 ret, frame = cap.read()
@@ -366,18 +356,12 @@ class CameraManager:
         return status
     
     def connect_all_cameras(self):
-        """Connect to all configured cameras"""
-        results = {}
-        for source_id, camera in self.cameras.items():
-            success = camera.connect()
-            results[source_id] = {
-                'success': success,
-                'error': camera.error_message if not success else None
-            }
-        return results
+        """Connect to all configured cameras (optimized for low memory)"""
+        for camera in self.cameras.values():
+            camera.connect()
     
     def disconnect_all_cameras(self):
-        """Disconnect from all cameras"""
+        """Disconnect from all cameras (optimized for low memory)"""
         for camera in self.cameras.values():
             camera.disconnect()
     

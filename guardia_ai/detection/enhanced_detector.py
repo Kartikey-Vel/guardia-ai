@@ -25,202 +25,47 @@ class EnhancedDetector:
     
     def __init__(self, face_auth=None):
         self.face_auth = face_auth
-        self.detection_stats = {
-            'total_frames': 0,
-            'faces_detected': 0,
-            'objects_detected': 0,
-            'known_faces': 0,
-            'unknown_faces': 0,
-            'threats_detected': 0,
-            'high_risk_objects': 0,
-            'medium_risk_objects': 0,
-            'processing_time': []
-        }
+        self.stats = {}
+        self.face_cascade = None
+        if not MEDIAPIPE_AVAILABLE:
+            self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        self.yolo_model = YOLO('yolov8n.pt') if YOLO_AVAILABLE else None
+        self.detection_confidence_threshold = 0.3
         
-        # Initialize MediaPipe Face Detection
+    def enhanced_detection(self, frame):
+        import cv2
+        h, w = frame.shape[:2]
+        if max(h, w) > 640:
+            scale = 640.0 / max(h, w)
+            frame = cv2.resize(frame, (int(w*scale), int(h*scale)))
+        faces = self._detect_faces(frame)
+        objects = self._detect_objects(frame)
+        self.stats = {'faces': len(faces), 'objects': len(objects)}
+        return {'faces': faces, 'objects': objects}
+    
+    def _detect_faces(self, frame):
         if MEDIAPIPE_AVAILABLE:
-            self.mp_face_detection = mp.solutions.face_detection
-            self.mp_drawing = mp.solutions.drawing_utils
-            self.face_detector = self.mp_face_detection.FaceDetection(
-                model_selection=1,  # 0: short-range (2m), 1: full-range (5m)
-                min_detection_confidence=0.5
-            )
-            print("✅ MediaPipe Face Detection initialized")
+            mp_face = mp.solutions.face_detection
+            with mp_face.FaceDetection(model_selection=0, min_detection_confidence=0.5) as face_detection:
+                results = face_detection.process(frame[:,:,::-1])
+                faces = []
+                if results.detections:
+                    for det in results.detections:
+                        bboxC = det.location_data.relative_bounding_box
+                        ih, iw = frame.shape[:2]
+                        x = int(bboxC.xmin * iw)
+                        y = int(bboxC.ymin * ih)
+                        w = int(bboxC.width * iw)
+                        h = int(bboxC.height * ih)
+                        faces.append((x, y, w, h))
+                return faces
         else:
-            self.face_detector = None
-            
-        # Initialize YOLO Object Detection
-        if YOLO_AVAILABLE:
-            try:
-                import warnings
-                # Suppress specific typing warnings
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", category=UserWarning, message=".*typing.Self.*")
-                    warnings.filterwarnings("ignore", category=FutureWarning, message=".*typing.Self.*")
-                    # Download YOLOv8n model if not exists (lightweight version)
-                    self.yolo_model = YOLO('yolov8n.pt')
-                print("✅ YOLOv8 Object Detection initialized")
-            except Exception as e:
-                print(f"⚠️ YOLO initialization failed: {e}")
-                self.yolo_model = None
-        else:
-            self.yolo_model = None
-            
-        # Initialize OpenCV face detector as fallback
-        self.cv_face_cascade = cv2.CascadeClassifier(
-            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        )
-        
-        # COCO class names for object detection (infinite expandable)
-        self.coco_classes = [
-            'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat',
-            'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat',
-            'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack',
-            'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball',
-            'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
-            'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
-            'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake',
-            'chair', 'couch', 'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop',
-            'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink',
-            'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush'
-        ]
-        
-        # Threat assessment categories
-        self.threat_categories = {
-            'high_risk': ['knife', 'scissors', 'gun', 'pistol', 'rifle', 'weapon', 'sword', 'axe'],
-            'medium_risk': ['baseball bat', 'hammer', 'crowbar', 'brick', 'rock', 'glass bottle'],
-            'low_risk': ['bottle', 'wine glass', 'cup', 'fork', 'spoon'],
-            'suspicious_behavior': ['mask', 'hood', 'suspicious_bag', 'large_bag'],
-            'normal_objects': ['laptop', 'phone', 'book', 'chair', 'table', 'tv'],
-            'vehicles': ['car', 'motorcycle', 'truck', 'bus', 'bicycle'],
-            'animals': ['dog', 'cat', 'bird', 'horse']
-        }
-        
-        # Object behavior tracking
-        self.object_history = {}  # Track objects across frames
-        self.detection_confidence_threshold = 0.3  # Lower threshold for infinite detection
-        self.tracking_enabled = True
-        
-    def enhanced_detection(self, frame: np.ndarray) -> Dict[str, Any]:
-        """
-        Perform enhanced detection combining face recognition, face detection, and object detection
-        """
-        start_time = time.time()
-        self.detection_stats['total_frames'] += 1
-        
-        results = {
-            'frame': frame.copy(),
-            'faces': [],
-            'objects': [],
-            'known_faces': [],
-            'unknown_faces': [],
-            'detection_time': 0,
-            'face_count': 0,
-            'object_count': 0,
-            'threats': []  # For suspicious objects or unknown faces
-        }
-        
-        # 1. Face Detection with MediaPipe (primary)
-        if self.face_detector:
-            face_locations = self._detect_faces_mediapipe(frame)
-        else:
-            # Fallback to OpenCV
-            face_locations = self._detect_faces_opencv(frame)
-            
-        results['face_count'] = len(face_locations)
-        self.detection_stats['faces_detected'] += len(face_locations)
-        
-        # 2. Face Recognition for detected faces
-        for face_bbox in face_locations:
-            face_result = self._process_face(frame, face_bbox)
-            results['faces'].append(face_result)
-            
-            if face_result['is_known']:
-                results['known_faces'].append(face_result)
-                self.detection_stats['known_faces'] += 1
-            else:
-                results['unknown_faces'].append(face_result)
-                self.detection_stats['unknown_faces'] += 1
-                # Unknown faces could be potential threats
-                results['threats'].append({
-                    'type': 'unknown_face',
-                    'confidence': face_result['confidence'],
-                    'bbox': face_result['bbox']
-                })
-        
-        # 3. Object Detection with YOLO
-        if self.yolo_model:
-            objects = self._detect_objects_yolo(frame)
-            results['objects'] = objects
-            results['object_count'] = len(objects)
-            self.detection_stats['objects_detected'] += len(objects)
-            
-            # Check for suspicious objects and assess threats
-            for obj in objects:
-                threat_level = self._assess_threat_level(obj['class'])
-                obj['threat_level'] = threat_level
-                
-                # Update threat statistics
-                if threat_level == 'high_risk':
-                    self.detection_stats['high_risk_objects'] += 1
-                elif threat_level == 'medium_risk':
-                    self.detection_stats['medium_risk_objects'] += 1
-                
-                if threat_level in ['high_risk', 'medium_risk']:
-                    results['threats'].append({
-                        'type': 'suspicious_object',
-                        'class': obj['class'],
-                        'confidence': obj['confidence'],
-                        'bbox': obj['bbox'],
-                        'threat_level': threat_level
-                    })
-        
-        # Update threat statistics
-        self.detection_stats['threats_detected'] += len(results['threats'])
-        
-        # 4. Draw all detections on frame
-        results['frame'] = self._draw_detections(frame, results)
-        
-        # Update timing stats
-        detection_time = time.time() - start_time
-        results['detection_time'] = detection_time
-        self.detection_stats['processing_time'].append(detection_time)
-        
-        return results
-    
-    def _detect_faces_mediapipe(self, frame: np.ndarray) -> List[Tuple[int, int, int, int]]:
-        """Detect faces using MediaPipe"""
-        face_locations = []
-        
-        try:
-            # Convert BGR to RGB for MediaPipe
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = self.face_detector.process(rgb_frame)
-            
-            if results.detections:
-                h, w, _ = frame.shape
-                for detection in results.detections:
-                    bbox = detection.location_data.relative_bounding_box
-                    # Convert relative coordinates to absolute
-                    x = int(bbox.xmin * w)
-                    y = int(bbox.ymin * h)
-                    width = int(bbox.width * w)
-                    height = int(bbox.height * h)
-                    
-                    face_locations.append((x, y, width, height))
-                    
-        except Exception as e:
-            print(f"MediaPipe face detection error: {e}")
-            
-        return face_locations
-    
-    def _detect_faces_opencv(self, frame: np.ndarray) -> List[Tuple[int, int, int, int]]:
-        """Detect faces using OpenCV (fallback)"""
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = self.cv_face_cascade.detectMultiScale(
-            gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
-        )
-        return [(x, y, w, h) for x, y, w, h in faces]
+            if self.face_cascade is None:
+                import cv2
+                self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+            gray = frame if len(frame.shape) == 2 else cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
+            return faces
     
     def _process_face(self, frame: np.ndarray, bbox: Tuple[int, int, int, int]) -> Dict[str, Any]:
         """Process individual face for recognition"""
@@ -250,48 +95,16 @@ class EnhancedDetector:
                 
         return face_result
     
-    def _detect_objects_yolo(self, frame: np.ndarray) -> List[Dict[str, Any]]:
-        """Detect objects using YOLO"""
-        objects = []
-        
-        try:
-            # Run YOLO inference
-            results = self.yolo_model(frame, verbose=False)
-            
-            for result in results:
-                boxes = result.boxes
-                if boxes is not None:
-                    for box in boxes:
-                        # Get box coordinates with defensive programming
-                        try:
-                            xyxy = box.xyxy[0].cpu().numpy()
-                            if len(xyxy) < 4:
-                                continue
-                            x1, y1, x2, y2 = xyxy[:4]
-                            confidence = float(box.conf[0].cpu().numpy())
-                            class_id = int(box.cls[0].cpu().numpy())
-                        except (IndexError, ValueError, TypeError) as e:
-                            continue
-                        
-                        # Filter by confidence threshold (lower for infinite detection)
-                        if confidence > self.detection_confidence_threshold:
-                            objects.append({
-                                'class': self.coco_classes[class_id],
-                                'confidence': float(confidence),
-                                'bbox': (int(x1), int(y1), int(x2-x1), int(y2-y1)),
-                                'class_id': class_id,
-                                'threat_level': 'unknown'  # Will be assessed later
-                            })
-                            
-        except Exception as e:
-            # Handle specific typing errors from YOLO
-            error_msg = str(e)
-            if "typing.Self" in error_msg:
-                print(f"⚠️ YOLO typing compatibility warning (non-critical): {e}")
-            else:
-                print(f"YOLO detection error: {e}")
-            
-        return objects
+    def _detect_objects(self, frame):
+        if YOLO_AVAILABLE:
+            model = YOLO('yolov8n.pt')  # Use nano model for speed
+            results = model(frame, verbose=False)
+            objects = []
+            for r in results:
+                for box in r.boxes:
+                    objects.append({'class': int(box.cls[0]), 'conf': float(box.conf[0])})
+            return objects
+        return []
     
     def _assess_threat_level(self, object_class: str) -> str:
         """Assess threat level of detected object"""
@@ -395,40 +208,11 @@ class EnhancedDetector:
         
         return annotated_frame
     
-    def get_detection_stats(self) -> Dict[str, Any]:
-        """Get detection statistics"""
-        avg_processing_time = np.mean(self.detection_stats['processing_time']) if self.detection_stats['processing_time'] else 0
-        fps = 1.0 / avg_processing_time if avg_processing_time > 0 else 0
-        
-        return {
-            'total_frames': self.detection_stats['total_frames'],
-            'faces_detected': self.detection_stats['faces_detected'],
-            'objects_detected': self.detection_stats['objects_detected'],
-            'known_faces': self.detection_stats['known_faces'],
-            'unknown_faces': self.detection_stats['unknown_faces'],
-            'threats_detected': self.detection_stats['threats_detected'],
-            'high_risk_objects': self.detection_stats['high_risk_objects'],
-            'medium_risk_objects': self.detection_stats['medium_risk_objects'],
-            'avg_processing_time_ms': avg_processing_time * 1000,
-            'estimated_fps': fps,
-            'mediapipe_available': MEDIAPIPE_AVAILABLE,
-            'yolo_available': YOLO_AVAILABLE,
-            'infinite_detection_enabled': self.detection_confidence_threshold < 0.5
-        }
-    
+    def get_detection_stats(self):
+        return self.stats
+
     def reset_stats(self):
-        """Reset detection statistics"""
-        self.detection_stats = {
-            'total_frames': 0,
-            'faces_detected': 0,
-            'objects_detected': 0,
-            'known_faces': 0,
-            'unknown_faces': 0,
-            'threats_detected': 0,
-            'high_risk_objects': 0,
-            'medium_risk_objects': 0,
-            'processing_time': []
-        }
+        self.stats = {}
 
 def test_enhanced_detector():
     """Test the enhanced detector"""

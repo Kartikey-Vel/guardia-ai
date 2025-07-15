@@ -5,6 +5,12 @@ Includes face recognition, object detection, and threat assessment
 import sys
 import os
 
+# Add the project root to Python path
+project_root = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(project_root)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
 # Fix Qt plugin conflicts before importing any Qt-related modules
 os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = ''
 os.environ['QT_PLUGIN_PATH'] = ''
@@ -24,26 +30,30 @@ def main():
     print("🔍 Technologies: InsightFace, MediaPipe, YOLOv8, OpenCV")
     print("⚡ Capabilities: Infinite Detection, Real-time Analysis")
     print("=" * 50)
-    
+
     try:
+        # Lazy-load heavy modules only when needed
         app = QApplication(sys.argv)
-        
         print("🔐 Initializing face authentication...")
         face_auth = FaceAuthenticator()
-        
         print("🚀 Starting enhanced security interface...")
         main_window = AuthMainWindow(face_auth)
         main_window.show()
-        
         print("✅ Guardia AI launched successfully!")
         sys.exit(app.exec())
-        
+    except MemoryError:
+        print("❌ Not enough memory to launch GUI. Try closing other applications or use a system with more RAM.")
+        sys.exit(1)
     except Exception as e:
         print(f"❌ GUI Error: {e}")
         print("⚠️ Running in headless mode...")
-        # Fallback to test mode
-        face_auth = FaceAuthenticator()
-        print("✅ Face authentication module loaded successfully")
+        # Fallback to test mode, but avoid loading heavy modules if memory is low
+        try:
+            face_auth = FaceAuthenticator()
+            print("✅ Face authentication module loaded successfully")
+        except MemoryError:
+            print("❌ Not enough memory to load face authentication module.")
+            sys.exit(1)
         print("💡 Use test_dashboard.py for GUI testing")
         print("💡 Use setup.py for system verification")
 

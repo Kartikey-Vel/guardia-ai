@@ -63,7 +63,7 @@ class Zone:
     
     # Violation tracking
     current_violations: List[str] = field(default_factory=list)
-    violation_history: List[Dict[str, Any]] = field(default_factory=list)
+    violation_history: List[Dict[str, Any]] = field(default_factory=list)  # Only keep last 20
     last_violation_time: Optional[datetime] = None
     
     # Visual properties
@@ -227,6 +227,12 @@ class ZoneManager:
                 thickness = max(10, zone.thickness * 5)
                 cv2.line(mask, p1, p2, 255, thickness)
         
+        # Only keep small masks in memory (downscale if large)
+        max_dim = 640
+        if mask.shape[0] > max_dim or mask.shape[1] > max_dim:
+            import cv2
+            scale = max_dim / max(mask.shape)
+            mask = cv2.resize(mask, (int(mask.shape[1]*scale), int(mask.shape[0]*scale)), interpolation=cv2.INTER_NEAREST)
         self.zone_masks[zone.zone_id] = mask
     
     def check_violations(self, detections: List[Dict[str, Any]]) -> List[str]:
@@ -401,7 +407,7 @@ class ZoneManager:
         
         # Add to violation history
         zone.violation_history.append(violation.__dict__)
-        if len(zone.violation_history) > 100:  # Keep last 100 violations
+        if len(zone.violation_history) > 20:  # Keep last 20 violations
             zone.violation_history.pop(0)
         
         zone.last_violation_time = current_time
