@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.DS_Store
+.env
+.azure/
+.terraform/
+**/snapshots/
+**/logs/
+**/outputs/
+**/.ipynb_checkpoints/
+**/weights/
