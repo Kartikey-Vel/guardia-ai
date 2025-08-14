@@ -27,6 +27,11 @@ class AppConfig:
     use_gcs_upload: bool = bool(int(os.getenv("GUARDIA_USE_GCS_UPLOAD", "0")))
     pubsub_topic: str = os.getenv("PUBSUB_TOPIC", "")  # projects/{project_id}/topics/{topic_name}
 
+    # Face auth
+    use_face_auth: bool = bool(int(os.getenv("GUARDIA_USE_FACE_AUTH", "0")))
+    face_db_dir: str = os.path.abspath(os.getenv("GUARDIA_FACE_DB_DIR", os.path.join("outputs", "faces")))
+    trusted_people: List[str] = field(default_factory=list)
+
     # YOLO
     yolo_weights: str = os.getenv("YOLO_WEIGHTS", "yolov8n.pt")
     yolo_conf_thresh: float = 0.25
