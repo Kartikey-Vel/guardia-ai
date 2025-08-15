@@ -13,7 +13,7 @@ import base64
 
 import cv2
 import numpy as np
-from flask import Flask, Response, render_template_string, jsonify, request, make_response, redirect, url_for
+from flask import Flask, Response, render_template, jsonify, request, make_response, redirect, url_for
 import psutil
 try:
     from dotenv import load_dotenv
@@ -130,467 +130,82 @@ try:
 except Exception:
     genai = None
 
-LOGIN_HTML = """
-<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>Login - Guardia-AI</title>
-    <style>
-        body { font-family: system-ui, Arial, sans-serif; background: #0b0e11; color: #eaecef; display:flex; align-items:center; justify-content:center; height:100vh; }
-        .card { background:#0f141a; border:1px solid #1e232a; padding:24px; border-radius:8px; width: 320px; }
-        h1 { font-size:18px; margin:0 0 16px; }
-        input { width:100%; padding:10px; margin:8px 0; border:1px solid #1e232a; background:#0b0f14; color:#eaecef; border-radius:6px; }
-        button { width:100%; padding:10px; margin-top:8px; background:#1f2937; border:1px solid #374151; color:#eaecef; border-radius:6px; cursor:pointer; }
-        .alt { text-align:center; font-size:12px; color:#9ca3af; margin-top:8px; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h1>🛡️ Guardia-AI Login</h1>
-        <input id="username" placeholder="Username"/>
-        <input id="password" type="password" placeholder="Password"/>
-        <button onclick="login()">Login</button>
-        <button onclick="register()">Register</button>
-        <div id="msg" class="alt"></div>
-    </div>
-    <script>
-        async function login() {
-            const body = { username: document.getElementById('username').value, password: document.getElementById('password').value };
-            const r = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-            const j = await r.json();
-            document.getElementById('msg').innerText = j.ok ? 'Logged in' : (j.error||'Error');
-            if (j.ok) location.href = '/';
-        }
-        async function register() {
-            const body = { username: document.getElementById('username').value, password: document.getElementById('password').value };
-            const r = await fetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-            const j = await r.json();
-            document.getElementById('msg').innerText = j.ok ? 'Registered' : (j.error||'Error');
-            if (j.ok) location.href = '/';
-        }
-    </script>
-</body>
-</html>
-"""
+## Inline HTML moved to templates/index.html and templates/login.html
 
-HTML = """
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Guardia-AI</title>
-  <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 0; padding: 16px; background: #0b0e11; color: #eaecef; }
-    .main { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; max-width: 1200px; margin: 0 auto; }
-    .panel { background: #0f141a; border: 1px solid #1e232a; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-    h1 { color: #d1d5db; margin: 0 0 24px 0; text-align: center; }
-    h2 { margin: 0 0 12px; font-size: 16px; color: #d1d5db; }
-    .auth { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
-    .auth input { padding: 8px; border: 1px solid #1e232a; background: #0b0f14; color: #eaecef; border-radius: 4px; }
-    .auth button { padding: 8px 16px; background: #1f2937; border: 1px solid #374151; color: #eaecef; border-radius: 4px; cursor: pointer; }
-    .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .metric { background: #0b0f14; padding: 12px; border: 1px solid #1a2027; border-radius: 6px; text-align: center; }
-    .metric .label { color: #9ca3af; font-size: 12px; }
-    .metric .value { font-size: 20px; margin-top: 4px; font-weight: bold; }
-    .events { max-height: 300px; overflow-y: auto; }
-    .event { border-bottom: 1px solid #1a2027; padding: 8px 0; font-size: 14px; }
-    .event.harmful { border-left: 3px solid #ef4444; padding-left: 8px; }
-    img { width: 100%; height: auto; border-radius: 8px; border: 1px solid #1e232a; }
-    .status { color: #9ca3af; font-size: 12px; margin-bottom: 8px; }
-    button { padding: 8px 16px; background: #1f2937; border: 1px solid #374151; color: #eaecef; border-radius: 4px; cursor: pointer; margin-right: 8px; }
-    button:hover { background: #374151; }
-    .hidden { display: none; }
-        /* Onboarding overlay */
-        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; }
-        .wizard { background: #0f141a; border: 1px solid #1e232a; border-radius: 8px; width: 520px; max-width: 95vw; padding: 20px; }
-        .wizard h2 { margin: 0 0 12px; }
-        .wizard .actions { display: flex; gap: 8px; margin-top: 12px; }
-  </style>
-</head>
-<body>
-  <h1>🛡️ Guardia-AI Security System</h1>
+# Lightweight async frame grabber to avoid capture->inference blocking
+class FrameGrabber(threading.Thread):
+    def __init__(self, det: "DetectorThread"):
+        super().__init__(daemon=True)
+        self.det = det
+        self._cap = None
+        self._lock = threading.Lock()
+        self._latest = None
+        self._stop = threading.Event()
 
-    <!-- Onboarding Overlay -->
-    <div id="onboard_overlay" class="overlay">
-        <div class="wizard">
-            <h2>Welcome! Let’s set up your experience</h2>
-            <div id="wiz_step1">
-                <p>Would you like to enable face recognition for personalized alerts and trusted-person detection?</p>
-                <div class="actions">
-                    <button onclick="onFaceIntent('enroll')">Yes, set it up</button>
-                    <button onclick="onFaceIntent('later')">Not now</button>
-                    <button onclick="onFaceIntent('declined')">No thanks</button>
-                </div>
-            </div>
-            <div id="wiz_step2" class="hidden">
-                <p>Enroll your face now. You can upload a photo or capture from the live stream.</p>
-                <input id="wiz_file" type="file" accept="image/*" />
-                <div class="actions">
-                    <button onclick="wizUpload()">Upload photo</button>
-                    <button onclick="wizCapture()">Capture from stream</button>
-                    <button onclick="wizSkipLater()">Skip for now</button>
-                </div>
-                <div id="wiz_msg" class="status"></div>
-            </div>
-            <div id="wiz_done" class="hidden">
-                <p>All set! You can add faces later from the dashboard.</p>
-                <div class="actions">
-                    <button onclick="closeWizard()">Go to dashboard</button>
-                </div>
-            </div>
-        </div>
-    </div>
-  
-  <div class="panel">
-    <div id="auth_state" class="status">Not logged in</div>
-    <div class="auth">
-      <input id="auth_user" placeholder="Username"/>
-      <input id="auth_pass" type="password" placeholder="Password"/>
-      <button onclick="login()">Login</button>
-      <button onclick="register()">Register</button>
-    <button onclick="logout()">Logout</button>
-    <button onclick="resumeOnboarding()">Resume onboarding</button>
-    </div>
-  </div>
+    def run(self):
+        # open capture with retries using detector's helper
+        retries = 0
+        cap = None
+        while not self._stop.is_set() and retries < 5:
+            cap = self.det._open_capture()
+            if cap and cap.isOpened():
+                break
+            retries += 1
+            time.sleep(0.5)
+        if not cap or not cap.isOpened():
+            self.det.last_error = 'open_failed'
+            return
+        self._cap = cap
+        # initialize resolution into metrics
+        try:
+            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+            self.det.metrics['frame_width'] = w
+            self.det.metrics['frame_height'] = h
+        except Exception:
+            pass
+        # tight loop grabbing latest frame
+        while not self._stop.is_set():
+            ok, frame = cap.read()
+            if not ok:
+                self.det.read_failures += 1
+                self.det.last_error = 'read_failed'
+                time.sleep(0.01)
+                continue
+            with self._lock:
+                self._latest = frame
+            # small sleep to yield but keep latency low
+            time.sleep(0.001)
 
-  <div class="main">
-    <div>
-      <div class="panel">
-        <h2>📹 Live Stream</h2>
-        <img src="/stream" alt="Live video feed" />
-      </div>
-      
-      <div class="panel">
-        <h2>📊 Recent Events</h2>
-        <div class="events" id="events"></div>
-      </div>
+        try:
+            cap.release()
+        except Exception:
+            pass
 
-            <div class="panel">
-                <h2>🚨 Alerts</h2>
-                <div id="alerts_stats" class="status">No data</div>
-                <div id="alerts_list" class="events"></div>
-                <div style="margin-top:8px;">
-                    <button onclick="testAlert()">Send Test Notification</button>
-                </div>
-            </div>
-    </div>
-    
-    <div>
-      <div class="panel">
-        <h2>📈 System Metrics</h2>
-        <div class="metrics" id="metrics"></div>
-      </div>
-      
-      <div class="panel" id="simple_controls">
-        <h2>⚙️ Quick Setup</h2>
-        <div style="margin-bottom: 12px;">
-          <input id="purpose" placeholder="Purpose (e.g. home security)" style="width: 100%; padding: 8px; border: 1px solid #1e232a; background: #0b0f14; color: #eaecef; border-radius: 4px;"/>
-        </div>
-        <button onclick="suggestPersonalized()">Get Personalized Config</button>
-        <button onclick="trainPersonalized()">Start Training</button>
-        <div id="profile_status" class="status"></div>
-        <div id="jobs_list" style="margin-top: 12px; font-size: 13px;"></div>
-      </div>
+    def get_latest(self):
+        with self._lock:
+            return None if self._latest is None else self._latest.copy()
 
-            <div class="panel">
-                <h2>🧠 Performance</h2>
-                <div id="perf_summary" class="status">No performance data</div>
-                <div id="perf_current" class="metrics" style="margin-top:8px;"></div>
-            </div>
+    def stop(self):
+        self._stop.set()
 
-            <div class="panel">
-                <h2>🔧 Capture Diagnostics</h2>
-                <div class="metrics" id="capture_diag"></div>
-            </div>
-    </div>
-  </div>
-      <div id="summary" class="summary"></div>
-    </div>
-  </div>
-  <footer>Press 'q' in the local window to stop capture. This dashboard auto-refreshes.</footer>
-  <script>
-        async function refresh() {
-            try {
-                // Check auth first; if not logged in, skip other calls to avoid 401 spam
-                const auth = await fetch('/api/auth/state').then(r => r.json());
-                const authState = document.getElementById('auth_state');
-                if (authState) {
-                    authState.innerText = auth.username ? ('Logged in as ' + auth.username) : 'Not logged in';
-                }
-                if (!auth.username) {
-                    setTimeout(refresh, 1000);
-                    return;
-                }
-
-    // Onboarding state
-    const onboard = await fetch('/api/onboarding/state').then(r => r.json());
-    handleOnboarding(onboard);
-
-                const m = await fetch('/api/metrics').then(r => r.json());
-                const e = await fetch('/api/events').then(r => r.json());
-                const sys = await fetch('/api/system').then(r => r.json());
-                const zn = await fetch('/api/zones').then(r => r.json());
-                const s = await fetch('/api/summary').then(r => r.json());
-                const perf = await fetch('/api/performance').then(r => r.ok ? r.json() : null).catch(()=>null);
-                const alerts = await fetch('/api/alerts').then(r => r.ok ? r.json() : {alerts:[], stats:{}}).catch(()=>({alerts:[], stats:{}}));
-                const envs = await fetch('/api/envs').then(r => r.json());
-                const faces = await fetch('/api/face/users').then(r => r.json());
-                const trusted = await fetch('/api/face/trusted').then(r => r.json()).catch(() => ({items:[]}));
-                const prof = await fetch('/api/profile').then(r => r.json());
-                const jobs = await fetch('/api/train/jobs').then(r => r.json());
-        const metrics = document.getElementById('metrics');
-        metrics.innerHTML = '';
-        Object.entries(m).forEach(([k, v]) => {
-          metrics.innerHTML += `<div class="metric"><div class="label">${k}</div><div class="value">${v}</div></div>`;
-        });
-                metrics.innerHTML += `<div class="metric"><div class="label">CPU %</div><div class="value">${sys.cpu_percent}</div></div>`;
-                metrics.innerHTML += `<div class="metric"><div class="label">Mem %</div><div class="value">${sys.mem_percent}</div></div>`;
-    const events = document.getElementById('events');
-        events.innerHTML = '';
-                e.forEach(ev => {
-                    const haz = (ev.hazards && ev.hazards.length) ? ` | hazards: ${ev.hazards.join(', ')}` : '';
-                    const trusted = ev.trustedName ? ` | trusted: ${ev.trustedName}` : '';
-                    events.innerHTML += `<div class="event"><div><b>${new Date(ev.ts*1000).toLocaleString()}</b></div><div>label: <code>${ev.label}</code> conf: ${ev.confidence?.toFixed(2)}${trusted}</div><div>harmful: <b>${ev.harmful ? 'YES' : 'NO'}</b>${haz}</div><div>labels: ${ev.allLabels?.join(', ')}</div></div>`;
-                });
-                const zones = document.getElementById('zones');
-                zones.innerHTML = 'Active zones: ' + JSON.stringify(zn);
-        document.getElementById('summary').textContent = s.summary || '';
-        document.getElementById('env_active').innerText = 'Active: ' + (envs.active || '-');
-        const envDiv = document.getElementById('env_list');
-        envDiv.innerHTML = '';
-        (envs.items || []).forEach(n => {
-            const b = document.createElement('button');
-            b.textContent = 'Select ' + n;
-            b.onclick = () => selectEnv(n);
-            envDiv.appendChild(b);
-            const del = document.createElement('button');
-            del.textContent = 'Delete ' + n;
-            del.onclick = async () => { await fetch('/api/envs?name=' + encodeURIComponent(n), { method: 'DELETE' }); refresh(); };
-            envDiv.appendChild(del);
-            envDiv.appendChild(document.createElement('br'));
-        });
-        document.getElementById('face_enabled').innerText = 'Face Auth: ' + (faces.enabled ? 'enabled' : 'disabled');
-        document.getElementById('face_users').innerText = 'Users: ' + JSON.stringify(faces.users || []);
-        document.getElementById('face_trusted').innerText = 'Trusted: ' + JSON.stringify(trusted.items || []);
-        const slDiv = document.getElementById('face_suppress_labels');
-        if (slDiv) {
-            slDiv.innerText = 'Suppress labels: ' + JSON.stringify(trusted.suppress_labels || []);
-        }
-        const slInput = document.getElementById('suppress_labels_input');
-        if (slInput && slInput.dataset.init !== '1') {
-            slInput.value = (trusted.suppress_labels || []).join(',');
-            slInput.dataset.init = '1';
-        }
-                // authState updated above
-                const profDiv = document.getElementById('profile_status');
-                if (profDiv) {
-                    if (prof && prof.profile) {
-                        profDiv.innerText = 'Purpose: ' + (prof.profile.purpose || '-') + ' | Personalized: ' + (!!prof.profile.personalized);
-                    } else {
-                        profDiv.innerText = '';
-                    }
-                }
-                const jobsDiv = document.getElementById('jobs_list');
-                if (jobsDiv) {
-                    jobsDiv.innerHTML = '';
-                    ((jobs && jobs.jobs) || []).slice().reverse().forEach(j => {
-                        const d = new Date((j.updated_ts||j.created_ts||0)*1000).toLocaleString();
-                        const res = j.result ? ' (has result)' : '';
-                        const err = j.error ? (' error: ' + j.error) : '';
-                        const btn = (j.status==='queued'||j.status==='running') ? `<button onclick="cancelJob('${j.id}')">Cancel</button>` : '';
-                        jobsDiv.innerHTML += `<div><b>${j.id}</b> [${j.status}] ${d}${res}${err} ${btn}</div>`;
-                    });
-                }
-
-                // Performance summary
-                const perfDiv = document.getElementById('perf_summary');
-                const perfCur = document.getElementById('perf_current');
-                if (perfDiv) {
-                    if (!perf || !perf.summary) {
-                        perfDiv.innerText = 'Performance monitor not available';
-                    } else {
-                        const s = perf.summary || {};
-                        const a = perf.adaptive_settings || {};
-                        perfDiv.innerText = `avg cpu ${s.avg_cpu_percent}% | avg mem ${s.avg_memory_percent}% | avg fps ${s.avg_fps} | avg inf ${s.avg_inference_time_ms}ms | samples ${s.samples_collected}`;
-                        perfCur.innerHTML = '';
-                        const cm = perf.current_metrics || {};
-                        Object.entries(cm).forEach(([k, v]) => {
-                            perfCur.innerHTML += `<div class="metric"><div class="label">${k}</div><div class="value">${v}</div></div>`;
-                        });
-                    }
-                }
-
-                // Alerts
-                const aStats = document.getElementById('alerts_stats');
-                const aList = document.getElementById('alerts_list');
-                if (aStats && aList) {
-                    const st = alerts.stats || {};
-                    aStats.innerText = `total: ${st.total||0} | unack: ${st.unacknowledged||0} | by severity: ${JSON.stringify(st.by_severity||{})}`;
-                    aList.innerHTML = '';
-                    (alerts.alerts||[]).forEach(al => {
-                        const ts = new Date((al.timestamp||al.created_ts||0)*1000).toLocaleString();
-                        const sev = al.severity || al.level || 'UNKNOWN';
-                        const id = al.id || al.alert_id || '';
-                        const acked = !!al.acknowledged;
-                        const btn = acked ? '' : `<button onclick=\"ackAlert('${id}')\">Acknowledge</button>`;
-                        aList.innerHTML += `<div class="event ${sev.toLowerCase()}"><div><b>${ts}</b> [${sev}] ${al.type||al.kind||'ALERT'}</div><div>${al.title||al.message||'-'}</div><div>${al.description||''}</div><div>id: <code>${id}</code> ${acked?'(ack)':''} ${btn}</div></div>`;
-                    });
-                }
-
-                // Capture diagnostics from metrics
-                const capDiv = document.getElementById('capture_diag');
-                if (capDiv) {
-                    const diagKeys = ['capture_backend','capture_source','frame_width','frame_height','fps','frames','frames_skipped','frame_skip_ratio','read_failures','last_error'];
-                    capDiv.innerHTML = '';
-                    diagKeys.forEach(k => {
-                        if (m[k] !== undefined) {
-                            capDiv.innerHTML += `<div class="metric"><div class="label">${k}</div><div class="value">${m[k]}</div></div>`;
-                        }
-                    });
-                }
-      } catch (err) { /* ignore */ }
-      setTimeout(refresh, 1000);
-    }
-
-        function handleOnboarding(ob) {
-            const ov = document.getElementById('onboard_overlay');
-            const s1 = document.getElementById('wiz_step1');
-            const s2 = document.getElementById('wiz_step2');
-            const sd = document.getElementById('wiz_done');
-            if (!ov || !ob) return;
-            if (ob.done) {
-                ov.style.display = 'none';
-                return;
-            }
-            ov.style.display = 'flex';
-            const intent = ob.steps?.face_intent || 'unknown';
-            const enrolled = !!ob.steps?.face_enrolled;
-            s1.classList.toggle('hidden', intent !== 'unknown');
-            s2.classList.toggle('hidden', !(intent === 'enroll' && !enrolled));
-            sd.classList.toggle('hidden', !(intent !== 'enroll' || enrolled));
-        }
-
-        async function onFaceIntent(choice) {
-            await fetch('/api/onboarding/face/intent', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ choice }) });
-            // If declined, complete immediately
-            if (choice === 'declined' || choice === 'later') {
-                await fetch('/api/onboarding/complete', { method:'POST' });
-            }
-        }
-        async function wizUpload() {
-            const f = document.getElementById('wiz_file').files[0];
-            if (!f) { document.getElementById('wiz_msg').innerText = 'Pick a photo first'; return; }
-            const fd = new FormData(); fd.append('file', f);
-            const r = await fetch('/api/onboarding/face/enroll-upload', { method:'POST', body: fd });
-            const j = await r.json().catch(()=>({ok:false}));
-            document.getElementById('wiz_msg').innerText = j.ok ? 'Enrolled' : (j.error||'Failed');
-            if (j.ok) await fetch('/api/onboarding/complete', { method:'POST' });
-        }
-        async function wizCapture() {
-            const r = await fetch('/api/onboarding/face/enroll-from-frame', { method:'POST' });
-            const j = await r.json().catch(()=>({ok:false}));
-            document.getElementById('wiz_msg').innerText = j.ok ? 'Enrolled from stream' : (j.error||'Failed');
-            if (j.ok) await fetch('/api/onboarding/complete', { method:'POST' });
-        }
-        async function wizSkipLater() {
-            await onFaceIntent('later');
-        }
-        function closeWizard() {
-            document.getElementById('onboard_overlay').style.display = 'none';
-        }
-        async function addZone() {
-            const zx1 = parseInt(document.getElementById('zx1').value || '0');
-            const zy1 = parseInt(document.getElementById('zy1').value || '0');
-            const zx2 = parseInt(document.getElementById('zx2').value || '0');
-            const zy2 = parseInt(document.getElementById('zy2').value || '0');
-            await fetch('/api/zones', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ x1: zx1, y1: zy1, x2: zx2, y2: zy2 }) });
-        }
-        async function clearZones() {
-            await fetch('/api/zones', { method: 'DELETE' });
-        }
-        async function createEnv() {
-            const name = document.getElementById('env_name').value;
-            let cfg = {};
-            try { cfg = JSON.parse(document.getElementById('env_cfg').value || '{}'); } catch {}
-            await fetch('/api/envs', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, config: cfg }) });
-            refresh();
-        }
-        async function deleteEnv() {
-            const name = document.getElementById('env_name').value;
-            await fetch('/api/envs?name=' + encodeURIComponent(name), { method: 'DELETE' });
-            refresh();
-        }
-        async function selectEnv(name) {
-            await fetch('/api/envs/select', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
-            refresh();
-        }
-        async function suggestEnv() {
-            const use_case = document.getElementById('env_usecase').value || 'home security';
-            const s = await (await fetch('/api/envs/suggest', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ use_case }) })).json();
-            document.getElementById('env_cfg').value = JSON.stringify(s.config || {}, null, 2);
-        }
-        async function enrollFace() {
-            const name = document.getElementById('enroll_name').value;
-            const file = document.getElementById('enroll_file').files[0];
-            if (!file || !name) return;
-            const fd = new FormData();
-            fd.append('file', file);
-            await fetch('/api/face/enroll/' + encodeURIComponent(name), { method: 'POST', body: fd });
-            refresh();
-        }
-        async function enrollFromStream() {
-            const name = document.getElementById('enroll_name').value;
-            if (!name) return;
-            await fetch('/api/face/enroll-from-frame/' + encodeURIComponent(name), { method: 'POST' });
-            refresh();
-        }
-        async function addTrusted() {
-            const name = document.getElementById('trusted_name').value;
-            if (!name) return;
-            await fetch('/api/face/trusted', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
-            refresh();
-        }
-        async function cancelJob(id) {
-            await fetch('/api/train/jobs/' + encodeURIComponent(id) + '/cancel', { method: 'POST' });
-            refresh();
-        }
-        async function ackAlert(id) {
-            if (!id) return;
-            await fetch('/api/alerts/acknowledge', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ alert_id: id }) });
-            refresh();
-        }
-        async function testAlert() {
-            await fetch('/api/alerts/test', { method:'POST' }).catch(()=>{});
-        }
-        async function login() {
-            const body = { username: document.getElementById('auth_user').value, password: document.getElementById('auth_pass').value };
-            await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-            setTimeout(refresh, 100);
-        }
-        async function register() {
-            const body = { username: document.getElementById('auth_user').value, password: document.getElementById('auth_pass').value };
-            await fetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-            setTimeout(refresh, 100);
-        }
-        async function logout() {
-            await fetch('/api/auth/logout', { method:'POST' });
-            location.reload();
-        }
-        async function resumeOnboarding() {
-            const ob = await fetch('/api/onboarding/state').then(r => r.json()).catch(()=>null);
-            if (ob) { handleOnboarding(ob); }
-        }
-    refresh();
-  </script>
-</body>
-</html>
-"""
 
 class DetectorThread(threading.Thread):
-    def __init__(self, cfg: AppConfig, metrics: Dict[str, Any], events: Deque[Dict[str, Any]], event_hook: Callable[[Dict[str, Any]], None] | None = None, face_auth=None, perf=None, dcache=None):
+    # Class-level defaults for analyzers
+    capture_backend: Optional[str] = None
+    read_failures: int = 0
+    last_error: Optional[str] = None
+
+    def __init__(
+        self,
+        cfg: AppConfig,
+        metrics: Dict[str, Any],
+        events: Deque[Dict[str, Any]],
+        event_hook: Optional[Callable[[Dict[str, Any]], None]] = None,
+        face_auth=None,
+        perf=None,
+        dcache=None,
+    ):
         super().__init__(daemon=True)
         self.cfg = cfg
         self.metrics = metrics
@@ -608,6 +223,12 @@ class DetectorThread(threading.Thread):
         self.capture_backend = None
         self.read_failures = 0
         self.last_error = None
+        # last detections snapshot for high-level API
+        self._last_detections = []
+        # live model reload controls
+        self.ctrl_lock = threading.Lock()
+        self.reload_requested = False
+        self.reload_to_weights = None
 
     def _open_capture(self):
         src = self.cfg.source
@@ -632,28 +253,67 @@ class DetectorThread(threading.Thread):
         return cap
 
     def run(self) -> None:
-        cap = self._open_capture()
-        if not cap or not cap.isOpened():
-            print("[Guardia] ERROR: Unable to open video source:", self.cfg.source)
-            # Small retry loop before giving up
-            for i in range(3):
-                time.sleep(1.0)
-                cap = self._open_capture()
-                if cap and cap.isOpened():
-                    break
-            if not cap or not cap.isOpened():
-                print("[Guardia] FATAL: Video source cannot be opened. Exiting detector thread.")
-                self.last_error = 'open_failed'
-                return
+        # Start a background frame grabber to avoid blocking on slow inference
+        grabber = FrameGrabber(self)
+        grabber.start()
+        # Allow a brief warm-up
+        t_start = time.time()
+        while grabber.is_alive() and grabber.get_latest() is None and (time.time() - t_start) < 5.0:
+            time.sleep(0.02)
+        if not grabber.is_alive() or grabber.get_latest() is None:
+            print("[Guardia] FATAL: Frame grabber failed to start.")
+            self.last_error = 'open_failed'
+            try:
+                grabber.stop()
+            except Exception:
+                pass
+            return
+        # Allow auto-discovery of latest ONNX if a folder or placeholder is provided
+        def _resolve_weights(path_like: str) -> str:
+            p = str(path_like).strip()
+            # If path is a directory, search for best.onnx inside
+            try:
+                if os.path.isdir(p):
+                    for root, _dirs, files in os.walk(p):
+                        for f in files:
+                            if f.lower() == 'best.onnx':
+                                return os.path.join(root, f)
+                # If not found, search common runs path
+                runs_dir = os.path.abspath(os.path.join(os.getcwd(), 'runs'))
+                latest = None
+                latest_mtime = -1
+                for root, _dirs, files in os.walk(runs_dir):
+                    if 'weights' in root.replace('\\','/').lower():
+                        for f in files:
+                            if f.lower() == 'best.onnx':
+                                fp = os.path.join(root, f)
+                                try:
+                                    mt = os.path.getmtime(fp)
+                                except Exception:
+                                    mt = 0
+                                if mt > latest_mtime:
+                                    latest = fp; latest_mtime = mt
+                if latest:
+                    return latest
+            except Exception:
+                pass
+            return p
+
+        resolved_primary = _resolve_weights(self.cfg.yolo_weights)
         detector = YoloDetector(
-            weights=self.cfg.yolo_weights,
+            weights=resolved_primary,
             conf=self.cfg.yolo_conf_thresh,
             iou=self.cfg.yolo_iou_thresh,
             imgsz=self.cfg.yolo_imgsz,
             device=self.cfg.device,
             half=self.cfg.half,
-            extra_weights=self.cfg.yolo_extra_weights,
+            extra_weights=[_resolve_weights(w) for w in (self.cfg.yolo_extra_weights or [])],
         )
+        try:
+            self.metrics['model_weights'] = str(resolved_primary)
+            self.metrics['model_reload_ts'] = int(time.time())
+        except Exception:
+            pass
         vision = GoogleVisionClient(min_score=self.cfg.vision_min_score) if self.cfg.use_vision else GoogleVisionClient(1.0)
         pose = PoseAnalyzer(self.cfg.pose_min_detection_confidence, self.cfg.pose_min_tracking_confidence) if self.cfg.use_pose else PoseAnalyzer(1, 1)
         vision_limiter = FPSLimiter(self.cfg.max_vision_fps)
@@ -673,13 +333,35 @@ class DetectorThread(threading.Thread):
         frames_skipped = 0
 
         while not self.stop_flag.is_set():
+            # Handle live model reload requests
+            try:
+                do_reload = False
+                new_weights: Optional[str] = None
+                with self.ctrl_lock:
+                    if self.reload_requested:
+                        do_reload = True
+                        new_weights = self.reload_to_weights
+                        self.reload_requested = False
+                        self.reload_to_weights = None
+                if do_reload:
+                    w = _resolve_weights(new_weights or self.cfg.yolo_weights)
+                    detector = YoloDetector(
+                        weights=w,
+                        conf=self.cfg.yolo_conf_thresh,
+                        iou=self.cfg.yolo_iou_thresh,
+                        imgsz=self.cfg.yolo_imgsz,
+                        device=self.cfg.device,
+                        half=self.cfg.half,
+                        extra_weights=[_resolve_weights(wx) for wx in (self.cfg.yolo_extra_weights or [])],
+                    )
+                    self.metrics['model_weights'] = str(w)
+                    self.metrics['model_reload_ts'] = int(time.time())
+            except Exception:
+                pass
             frame_start_time = time.time()
-            
-            ok, frame = cap.read()
-            if not ok:
-                self.read_failures += 1
-                self.last_error = 'read_failed'
-                time.sleep(0.05)
+            frame = grabber.get_latest()
+            if frame is None:
+                time.sleep(0.01)
                 continue
             frame_idx += 1
             fps_counter += 1
@@ -700,6 +382,7 @@ class DetectorThread(threading.Thread):
                 frames_skipped += 1
 
             detections: List[Tuple[int, int, int, int, str, float]] = []
+            detection_details: List[Dict[str, Any]] = []
             inference_start = time.time()
             detection_count = 0
             
@@ -716,10 +399,10 @@ class DetectorThread(threading.Thread):
                         dets = dets_cached
                     else:
                         # if extra models exist, use merged detection
-                        if detector.available_multi():
-                            dets = detector.detect_multi(frame)
+                        if getattr(detector, 'available_multi', lambda: False)():
+                            dets = getattr(detector, 'detect_multi')(frame)
                         else:
-                            dets = detector.detect(frame)
+                            dets = getattr(detector, 'detect')(frame)
                         if ENHANCED_MODULES_AVAILABLE and self.dcache is not None:
                             try:
                                 self.dcache.cache_detection(frame, dets)
@@ -793,6 +476,18 @@ class DetectorThread(threading.Thread):
                                 harmful = False
                     except Exception:
                         pass
+                # record detail for snapshot
+                det_item = {
+                    'box': [int(x1), int(y1), int(x2), int(y2)],
+                    'label': label,
+                    'confidence': float(conf),
+                    'harmful': bool(harmful),
+                    'hazards': list(hazard_tags) if isinstance(hazard_tags, (list, tuple, set)) else (hazard_tags or []),
+                }
+                if recognized_name:
+                    det_item['trustedName'] = recognized_name
+                detection_details.append(det_item)
+
                 if harmful:
                     ts = time.time()
                     ev = {
@@ -913,10 +608,9 @@ class DetectorThread(threading.Thread):
             self.metrics['last_update'] = int(time.time())
             # capture diagnostics in metrics
             try:
-                w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
-                h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
-                self.metrics['frame_width'] = w
-                self.metrics['frame_height'] = h
+                h, w = frame.shape[:2]
+                self.metrics['frame_width'] = int(w)
+                self.metrics['frame_height'] = int(h)
             except Exception:
                 pass
             self.metrics['capture_backend'] = (self.capture_backend or 'unknown')
@@ -926,6 +620,9 @@ class DetectorThread(threading.Thread):
             self.metrics['read_failures'] = self.read_failures
             if self.last_error:
                 self.metrics['last_error'] = self.last_error
+
+            # publish last detections snapshot
+            self._last_detections = detection_details
 
             # Record performance metrics
             if ENHANCED_MODULES_AVAILABLE and self.perf is not None:
@@ -943,7 +640,10 @@ class DetectorThread(threading.Thread):
             with self.frame_lock:
                 self.last_frame = frame
 
-        cap.release()
+    def get_last_detections(self):
+        return list(self._last_detections)
+
+
 
     def get_jpeg(self) -> bytes | None:
         with self.frame_lock:
@@ -954,9 +654,18 @@ class DetectorThread(threading.Thread):
                 return None
             return jpg.tobytes()
 
+    def request_model_reload(self, weights: Optional[str] = None) -> None:
+        """Signal the detector thread to reload its model.
+        If weights is None, auto-discover latest ONNX/PT via _resolve_weights logic.
+        """
+        with self.ctrl_lock:
+            self.reload_to_weights = weights
+            self.reload_requested = True
+
 
 def create_app(cfg: AppConfig) -> Flask:
-    app = Flask(__name__)
+    templates_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
+    app = Flask(__name__, template_folder=templates_dir)
     app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret')
     jobs = JobManager()
 
@@ -1102,14 +811,14 @@ def create_app(cfg: AppConfig) -> Flask:
         # If already logged in, go home
         if cfg.require_auth and current_user():
             return redirect('/')
-        return render_template_string(LOGIN_HTML)
+        return render_template('login.html')
 
     @app.route('/')
     def index():
         if cfg.require_auth and not current_user():
             return redirect(url_for('login_page'))
         ensure_detector_started()
-        return render_template_string(HTML)
+        return render_template('index.html')
 
     @app.route('/stream')
     def stream():
@@ -1156,6 +865,43 @@ def create_app(cfg: AppConfig) -> Flask:
             api_cache.cache_response('/api/events', data, user=u)
         return jsonify(data)
 
+    @app.route('/api/model', methods=['GET'])
+    def api_model_info():
+        if cfg.require_auth and not current_user():
+            return jsonify({'error': 'unauthorized'}), 401
+        ensure_detector_started()
+        info = {
+            'weights': metrics.get('model_weights'),
+            'reload_ts': metrics.get('model_reload_ts'),
+            'imgsz': cfg.yolo_imgsz,
+            'conf': cfg.yolo_conf_thresh,
+            'iou': cfg.yolo_iou_thresh,
+            'device': cfg.device,
+        }
+        return jsonify(info)
+
+    @app.route('/api/model/reload', methods=['POST'])
+    def api_model_reload():
+        if cfg.require_auth and not current_user():
+            return jsonify({'error': 'unauthorized'}), 401
+        ensure_detector_started()
+        payload = request.get_json(silent=True) or {}
+        weights = payload.get('weights')
+        if weights:
+            try:
+                if not os.path.exists(str(weights)):
+                    return jsonify({'error': 'weights path not found'}), 400
+            except Exception:
+                return jsonify({'error': 'invalid weights value'}), 400
+        dref = det
+        if dref is None:
+            return jsonify({'error': 'detector not ready'}), 503
+        try:
+            dref.request_model_reload(weights)
+            return jsonify({'status': 'reloading', 'target': weights or 'auto'}), 202
+        except Exception as ex:
+            return jsonify({'error': str(ex)}), 500
+
     @app.route('/api/system')
     def api_system():
         if cfg.require_auth and not current_user():
@@ -1181,6 +927,41 @@ def create_app(cfg: AppConfig) -> Flask:
             api_cache.cache_response('/api/system', data, user=u)
         return jsonify(data)
 
+    @app.route('/api/detections')
+    def api_detections():
+        if cfg.require_auth and not current_user():
+            return jsonify({'error': 'unauthorized'}), 401
+        ensure_detector_started()
+        dref = det
+        objs = dref.get_last_detections() if dref else []
+        # aggregate summary
+        by_label: Dict[str, int] = {}
+        by_hazard: Dict[str, int] = {}
+        harmful = 0
+        trusted = set()
+        for o in objs:
+            lbl = str(o.get('label',''))
+            by_label[lbl] = by_label.get(lbl, 0) + 1
+            if o.get('harmful'):
+                harmful += 1
+            for h in o.get('hazards') or []:
+                by_hazard[str(h)] = by_hazard.get(str(h), 0) + 1
+            tn = o.get('trustedName')
+            if tn:
+                trusted.add(str(tn))
+        out = {
+            'timestamp': int(time.time()),
+            'objects': objs,
+            'summary': {
+                'total': len(objs),
+                'harmful': harmful,
+                'by_label': by_label,
+                'by_hazard': by_hazard,
+                'trusted_present': sorted(list(trusted)),
+            }
+        }
+        return jsonify(out)
+
     @app.route('/api/summary')
     def api_summary():
         if cfg.require_auth and not current_user():
@@ -1198,7 +979,10 @@ def create_app(cfg: AppConfig) -> Flask:
                 f"{time.strftime('%H:%M:%S', time.localtime(e['ts']))} | harmful={e.get('harmful')} label={e.get('label')} conf={e.get('confidence')} labels={','.join(e.get('allLabels', []))}"
                 for e in recent
             ])
-            prompt = f"""Summarize the following security detection events into 2-4 bullet points. Focus on harmful items and trends.\n\n{text}\n"""
+            prompt = (
+                "Summarize the following security detection events into 2-4 bullet points. "
+                "Focus on harmful items and trends.\n\n" + text + "\n"
+            )
             resp = model.generate_content(prompt)
             out = resp.text if hasattr(resp, 'text') else ''
             data = {'summary': out}
@@ -1768,7 +1552,7 @@ def create_app(cfg: AppConfig) -> Flask:
             "background_color": "#0b0f14",
             "icons": [
                 {
-                    "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiBmaWxsPSIjMWYyOTM3Ii8+Cjx0ZXh0IHg9Ijk2IiB5PSIxMDAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI2MCIgZmlsbD0iI2VhZWNlZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+boe+4jzwvdGV4dD4KPC9zdmc+",
+                    "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiBmaWxsPSIjMWYyOTM3Ii8+Cjx0ZXh0IHg9Ijk2IiB5PSIxMDAiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI2MCIgZmlsbD0iI2VhZWNlZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+boe+4jzwvdGV4dD4KPC9zdmc+",
                     "sizes": "192x192",
                     "type": "image/svg+xml",
                     "purpose": "any maskable"

@@ -38,6 +38,92 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "train:all-users",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"scripts/start_training_all.py"
+			],
+			"problemMatcher": [
+				"$python"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Train OpenImages subset (YOLOv8n→ONNX)",
+			"type": "shell",
+			"command": ".\\.venv\\Scripts\\python.exe",
+			"args": [
+				"scripts\\train_openimages_custom.py",
+				"--data",
+				"datasets\\external\\openimages_filtered",
+				"--model",
+				"yolov8n.pt",
+				"--epochs",
+				"5",
+				"--imgsz",
+				"640",
+				"--device",
+				"cpu"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Train OpenImages subset (YOLOv8n→ONNX)",
+			"type": "shell",
+			"command": ".\\.venv\\Scripts\\python.exe",
+			"args": [
+				"scripts\\train_openimages_custom.py",
+				"--data",
+				"datasets\\external\\openimages_filtered",
+				"--model",
+				"yolov8n.pt",
+				"--epochs",
+				"3",
+				"--imgsz",
+				"640",
+				"--device",
+				"cpu"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Prepare OpenImages YOLO split",
+			"type": "shell",
+			"command": ".\\.venv\\Scripts\\python.exe",
+			"args": [
+				"scripts\\prepare_openimages_yolo_split.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Train OpenImages subset (YOLOv8n→ONNX)",
+			"type": "shell",
+			"command": ".\\.venv\\Scripts\\python.exe",
+			"args": [
+				"scripts\\train_openimages_custom.py",
+				"--data",
+				"datasets\\external\\openimages_filtered",
+				"--model",
+				"yolov8n.pt",
+				"--epochs",
+				"3",
+				"--imgsz",
+				"640",
+				"--device",
+				"cpu"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
 		}
 	]
 }

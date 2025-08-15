@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Guardia-AI</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 0; padding: 16px; background: #0b0e11; color: #eaecef; }
+    .main { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; max-width: 1200px; margin: 0 auto; }
+    .panel { background: #0f141a; border: 1px solid #1e232a; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    h1 { color: #d1d5db; margin: 0 0 24px 0; text-align: center; }
+    h2 { margin: 0 0 12px; font-size: 16px; color: #d1d5db; }
+    .auth { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .auth input { padding: 8px; border: 1px solid #1e232a; background: #0b0f14; color: #eaecef; border-radius: 4px; }
+    .auth button { padding: 8px 16px; background: #1f2937; border: 1px solid #374151; color: #eaecef; border-radius: 4px; cursor: pointer; }
+    .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .metric { background: #0b0f14; padding: 12px; border: 1px solid #1a2027; border-radius: 6px; text-align: center; }
+    .metric .label { color: #9ca3af; font-size: 12px; }
+    .metric .value { font-size: 20px; margin-top: 4px; font-weight: bold; }
+    .events { max-height: 300px; overflow-y: auto; }
+    .event { border-bottom: 1px solid #1a2027; padding: 8px 0; font-size: 14px; }
+    .event.harmful { border-left: 3px solid #ef4444; padding-left: 8px; }
+    img { width: 100%; height: auto; border-radius: 8px; border: 1px solid #1e232a; }
+    .status { color: #9ca3af; font-size: 12px; margin-bottom: 8px; }
+    button { padding: 8px 16px; background: #1f2937; border: 1px solid #374151; color: #eaecef; border-radius: 4px; cursor: pointer; margin-right: 8px; }
+    button:hover { background: #374151; }
+    .hidden { display: none; }
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .wizard { background: #0f141a; border: 1px solid #1e232a; border-radius: 8px; width: 520px; max-width: 95vw; padding: 20px; }
+    .wizard h2 { margin: 0 0 12px; }
+    .wizard .actions { display: flex; gap: 8px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <h1>🛡️ Guardia-AI Security System</h1>
+
+  <div id="onboard_overlay" class="overlay">
+    <div class="wizard">
+      <h2>Welcome! Let’s set up your experience</h2>
+      <div id="wiz_step1">
+        <p>Would you like to enable face recognition for personalized alerts and trusted-person detection?</p>
+        <div class="actions">
+          <button onclick="onFaceIntent('enroll')">Yes, set it up</button>
+          <button onclick="onFaceIntent('later')">Not now</button>
+          <button onclick="onFaceIntent('declined')">No thanks</button>
+        </div>
+      </div>
+      <div id="wiz_step2" class="hidden">
+        <p>Enroll your face now. You can upload a photo or capture from the live stream.</p>
+        <input id="wiz_file" type="file" accept="image/*" />
+        <div class="actions">
+          <button onclick="wizUpload()">Upload photo</button>
+          <button onclick="wizCapture()">Capture from stream</button>
+          <button onclick="wizSkipLater()">Skip for now</button>
+        </div>
+        <div id="wiz_msg" class="status"></div>
+      </div>
+      <div id="wiz_done" class="hidden">
+        <p>All set! You can add faces later from the dashboard.</p>
+        <div class="actions">
+          <button onclick="closeWizard()">Go to dashboard</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div id="auth_state" class="status">Not logged in</div>
+    <div class="auth">
+      <input id="auth_user" placeholder="Username"/>
+      <input id="auth_pass" type="password" placeholder="Password"/>
+      <button onclick="login()">Login</button>
+      <button onclick="register()">Register</button>
+      <button onclick="logout()">Logout</button>
+      <button onclick="resumeOnboarding()">Resume onboarding</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div>
+      <div class="panel">
+        <h2>📹 Live Stream</h2>
+        <img src="/stream" alt="Live video feed" />
+      </div>
+
+      <div class="panel">
+        <h2>📊 Recent Events</h2>
+        <div class="events" id="events"></div>
+      </div>
+
+      <div class="panel">
+        <h2>🚨 Alerts</h2>
+        <div id="alerts_stats" class="status">No data</div>
+        <div id="alerts_list" class="events"></div>
+        <div style="margin-top:8px;">
+          <button onclick="testAlert()">Send Test Notification</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>📈 System Metrics</h2>
+        <div class="metrics" id="metrics"></div>
+      </div>
+
+      <div class="panel" id="simple_controls">
+        <h2>⚙️ Quick Setup</h2>
+        <div style="margin-bottom: 12px;">
+          <input id="purpose" placeholder="Purpose (e.g. home security)" style="width: 100%; padding: 8px; border: 1px solid #1e232a; background: #0b0f14; color: #eaecef; border-radius: 4px;"/>
+        </div>
+        <button onclick="suggestPersonalized()">Get Personalized Config</button>
+        <button onclick="trainPersonalized()">Start Training</button>
+        <div id="profile_status" class="status"></div>
+        <div id="jobs_list" style="margin-top: 12px; font-size: 13px;"></div>
+      </div>
+
+      <div class="panel">
+        <h2>🧠 Performance</h2>
+        <div id="perf_summary" class="status">No performance data</div>
+        <div id="perf_current" class="metrics" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="panel">
+        <h2>🔧 Capture Diagnostics</h2>
+        <div class="metrics" id="capture_diag"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="summary" class="summary"></div>
+  <footer>Press 'q' in the local window to stop capture. This dashboard auto-refreshes.</footer>
+
+  <script>
+    async function refresh() {
+      try {
+        const auth = await fetch('/api/auth/state').then(r => r.json());
+        const authState = document.getElementById('auth_state');
+        if (authState) authState.innerText = auth.username ? ('Logged in as ' + auth.username) : 'Not logged in';
+        if (!auth.username) { setTimeout(refresh, 1000); return; }
+
+        const onboard = await fetch('/api/onboarding/state').then(r => r.json());
+        handleOnboarding(onboard);
+
+        const m = await fetch('/api/metrics').then(r => r.json());
+        const e = await fetch('/api/events').then(r => r.json());
+        const sys = await fetch('/api/system').then(r => r.json());
+        const s = await fetch('/api/summary').then(r => r.json());
+        const perf = await fetch('/api/performance').then(r => r.ok ? r.json() : null).catch(()=>null);
+        const alerts = await fetch('/api/alerts').then(r => r.ok ? r.json() : {alerts:[], stats:{}}).catch(()=>({alerts:[], stats:{}}));
+        const envs = await fetch('/api/envs').then(r => r.json());
+        const faces = await fetch('/api/face/users').then(r => r.json());
+        const trusted = await fetch('/api/face/trusted').then(r => r.json()).catch(() => ({items:[]}));
+        const prof = await fetch('/api/profile').then(r => r.json());
+        const jobs = await fetch('/api/train/jobs').then(r => r.json());
+
+        const metrics = document.getElementById('metrics');
+        metrics.innerHTML = '';
+        Object.entries(m).forEach(([k, v]) => {
+          metrics.innerHTML += `<div class="metric"><div class="label">${k}</div><div class="value">${v}</div></div>`;
+        });
+        metrics.innerHTML += `<div class="metric"><div class="label">CPU %</div><div class="value">${sys.cpu_percent}</div></div>`;
+        metrics.innerHTML += `<div class="metric"><div class="label">Mem %</div><div class="value">${sys.mem_percent}</div></div>`;
+
+        const events = document.getElementById('events');
+        events.innerHTML = '';
+        e.forEach(ev => {
+          const haz = (ev.hazards && ev.hazards.length) ? ` | hazards: ${ev.hazards.join(', ')}` : '';
+          const trusted = ev.trustedName ? ` | trusted: ${ev.trustedName}` : '';
+          events.innerHTML += `<div class="event"><div><b>${new Date(ev.ts*1000).toLocaleString()}</b></div><div>label: <code>${ev.label}</code> conf: ${ev.confidence?.toFixed(2)}${trusted}</div><div>harmful: <b>${ev.harmful ? 'YES' : 'NO'}</b>${haz}</div><div>labels: ${ev.allLabels?.join(', ')}</div></div>`;
+        });
+
+        document.getElementById('summary').textContent = s.summary || '';
+
+        const aStats = document.getElementById('alerts_stats');
+        const aList = document.getElementById('alerts_list');
+        if (aStats && aList) {
+          const st = alerts.stats || {};
+          aStats.innerText = `total: ${st.total||0} | unack: ${st.unacknowledged||0} | by severity: ${JSON.stringify(st.by_severity||{})}`;
+          aList.innerHTML = '';
+          (alerts.alerts||[]).forEach(al => {
+            const ts = new Date((al.timestamp||al.created_ts||0)*1000).toLocaleString();
+            const sev = al.severity || al.level || 'UNKNOWN';
+            const id = al.id || al.alert_id || '';
+            const acked = !!al.acknowledged;
+            const btn = acked ? '' : `<button onclick=\"ackAlert('${id}')\">Acknowledge</button>`;
+            aList.innerHTML += `<div class="event ${sev.toLowerCase()}"><div><b>${ts}</b> [${sev}] ${al.type||al.kind||'ALERT'}</div><div>${al.title||al.message||'-'}</div><div>${al.description||''}</div><div>id: <code>${id}</code> ${acked?'(ack)':''} ${btn}</div></div>`;
+          });
+        }
+
+        const capDiv = document.getElementById('capture_diag');
+        if (capDiv) {
+          const diagKeys = ['capture_backend','capture_source','frame_width','frame_height','fps','frames','frames_skipped','frame_skip_ratio','read_failures','last_error'];
+          capDiv.innerHTML = '';
+          diagKeys.forEach(k => { if (m[k] !== undefined) capDiv.innerHTML += `<div class="metric"><div class="label">${k}</div><div class="value">${m[k]}</div></div>`; });
+        }
+      } catch (err) {}
+      setTimeout(refresh, 1000);
+    }
+
+    function handleOnboarding(ob) {
+      const ov = document.getElementById('onboard_overlay');
+      const s1 = document.getElementById('wiz_step1');
+      const s2 = document.getElementById('wiz_step2');
+      const sd = document.getElementById('wiz_done');
+      if (!ov || !ob) return;
+      if (ob.done) { ov.style.display = 'none'; return; }
+      ov.style.display = 'flex';
+      const intent = ob.steps?.face_intent || 'unknown';
+      const enrolled = !!ob.steps?.face_enrolled;
+      s1.classList.toggle('hidden', intent !== 'unknown');
+      s2.classList.toggle('hidden', !(intent === 'enroll' && !enrolled));
+      sd.classList.toggle('hidden', !(intent !== 'enroll' || enrolled));
+    }
+
+    async function onFaceIntent(choice) {
+      await fetch('/api/onboarding/face/intent', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ choice }) });
+      if (choice === 'declined' || choice === 'later') await fetch('/api/onboarding/complete', { method:'POST' });
+    }
+    async function wizUpload() {
+      const f = document.getElementById('wiz_file').files[0];
+      if (!f) { document.getElementById('wiz_msg').innerText = 'Pick a photo first'; return; }
+      const fd = new FormData(); fd.append('file', f);
+      const r = await fetch('/api/onboarding/face/enroll-upload', { method:'POST', body: fd });
+      const j = await r.json().catch(()=>({ok:false}));
+      document.getElementById('wiz_msg').innerText = j.ok ? 'Enrolled' : (j.error||'Failed');
+      if (j.ok) await fetch('/api/onboarding/complete', { method:'POST' });
+    }
+    async function wizCapture() {
+      const r = await fetch('/api/onboarding/face/enroll-from-frame', { method:'POST' });
+      const j = await r.json().catch(()=>({ok:false}));
+      document.getElementById('wiz_msg').innerText = j.ok ? 'Enrolled from stream' : (j.error||'Failed');
+      if (j.ok) await fetch('/api/onboarding/complete', { method:'POST' });
+    }
+    async function wizSkipLater() { await onFaceIntent('later'); }
+
+    async function cancelJob(id) {
+      await fetch('/api/train/jobs/' + encodeURIComponent(id) + '/cancel', { method: 'POST' });
+    }
+    async function ackAlert(id) {
+      if (!id) return;
+      await fetch('/api/alerts/acknowledge', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ alert_id: id }) });
+    }
+    async function testAlert() { await fetch('/api/alerts/test', { method:'POST' }).catch(()=>{}); }
+    async function login() {
+      const body = { username: document.getElementById('auth_user').value, password: document.getElementById('auth_pass').value };
+      await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+      setTimeout(refresh, 100);
+    }
+    async function register() {
+      const body = { username: document.getElementById('auth_user').value, password: document.getElementById('auth_pass').value };
+      await fetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+      setTimeout(refresh, 100);
+    }
+    async function logout() { await fetch('/api/auth/logout', { method:'POST' }); location.reload(); }
+    async function resumeOnboarding() { const ob = await fetch('/api/onboarding/state').then(r => r.json()).catch(()=>null); if (ob) { handleOnboarding(ob); } }
+
+    refresh();
+  </script>
+</body>
+</html>
