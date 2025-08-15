@@ -6,10 +6,14 @@ import queue
 from collections import deque
 from typing import Deque, Dict, Any, List, Tuple, Callable, Optional
 import json
+from datetime import datetime
+import hmac
+import hashlib
+import base64
 
 import cv2
 import numpy as np
-from flask import Flask, Response, render_template_string, jsonify, request, make_response
+from flask import Flask, Response, render_template_string, jsonify, request, make_response, redirect, url_for
 import psutil
 try:
     from dotenv import load_dotenv
@@ -17,24 +21,159 @@ try:
 except Exception:
     pass
 
-from .config import AppConfig
-from .yolo_detector import YoloDetector
-from .vision_client import GoogleVisionClient
-from .pose_analyzer import PoseAnalyzer
-from .utils import FPSLimiter, motion_changed, draw_bbox, draw_label, crop_roi, EventLogger, save_image, name_color_hsv, SimpleTracker, evaluate_hazards, LoiteringMonitor
-from .gcp_clients import GCSUploader, PubSubPublisher
-from . import environments as envmgr
-from . import trusted_store
-from .face_auth import FaceAuth
-from . import user_store
-from . import federated
-from .training import JobManager
+try:
+    try:
+        from .config import AppConfig
+        from .yolo_detector import YoloDetector
+        from .vision_client import GoogleVisionClient
+        from .pose_analyzer import PoseAnalyzer
+        from .utils import FPSLimiter, motion_changed, draw_bbox, draw_label, crop_roi, EventLogger, save_image, name_color_hsv, SimpleTracker, evaluate_hazards, LoiteringMonitor
+        from .gcp_clients import GCSUploader, PubSubPublisher
+        from . import environments as envmgr
+        from . import trusted_store
+        from .face_auth import FaceAuth
+        from . import user_store
+        from . import federated
+        from .training import JobManager
+    except ImportError:
+        # Allow running this file directly: python src/server.py
+        import sys as _sys, os as _os
+        _sys.path.append(_os.path.dirname(_os.path.dirname(__file__)))
+        from src.config import AppConfig
+        from src.yolo_detector import YoloDetector
+        from src.vision_client import GoogleVisionClient
+        from src.pose_analyzer import PoseAnalyzer
+        from src.utils import FPSLimiter, motion_changed, draw_bbox, draw_label, crop_roi, EventLogger, save_image, name_color_hsv, SimpleTracker, evaluate_hazards, LoiteringMonitor
+        from src.gcp_clients import GCSUploader, PubSubPublisher
+        from src import environments as envmgr
+        from src import trusted_store
+        from src.face_auth import FaceAuth
+        from src import user_store
+        from src import federated
+        from src.training import JobManager
+except ImportError:
+    # Fallback for running as a script: python src/server.py
+    from src.config import AppConfig
+    from src.yolo_detector import YoloDetector
+    from src.vision_client import GoogleVisionClient
+    from src.pose_analyzer import PoseAnalyzer
+    from src.utils import FPSLimiter, motion_changed, draw_bbox, draw_label, crop_roi, EventLogger, save_image, name_color_hsv, SimpleTracker, evaluate_hazards, LoiteringMonitor
+    from src.gcp_clients import GCSUploader, PubSubPublisher
+    from src import environments as envmgr
+    from src import trusted_store
+    from src.face_auth import FaceAuth
+    from src import user_store
+    from src import federated
+    from src.training import JobManager
+# Enhanced system modules
+try:
+    # Use global singletons/instances where provided
+    from .performance_monitor import performance_monitor as perf_mon
+    from .cache_manager import (
+        detection_cache,
+        api_cache,
+        image_processor,
+        frame_buffer,
+        get_cache_stats,
+    )
+    from .alert_system import (
+        alert_manager,
+        AlertSeverity,
+        AlertType,
+        create_threat_alert,
+        create_zone_breach_alert,
+        create_performance_alert,
+    )
+    from . import mobile_webapp
+    ENHANCED_MODULES_AVAILABLE = True
+except ImportError:
+    try:
+        from src.performance_monitor import performance_monitor as perf_mon
+        from src.cache_manager import (
+            detection_cache,
+            api_cache,
+            image_processor,
+            frame_buffer,
+            get_cache_stats,
+        )
+        from src.alert_system import (
+            alert_manager,
+            AlertSeverity,
+            AlertType,
+            create_threat_alert,
+            create_zone_breach_alert,
+            create_performance_alert,
+        )
+        from src import mobile_webapp
+        ENHANCED_MODULES_AVAILABLE = True
+    except ImportError:
+        ENHANCED_MODULES_AVAILABLE = False
+        perf_mon = None
+        detection_cache = None
+        api_cache = None
+        image_processor = None
+        frame_buffer = None
+        def get_cache_stats():
+            return {}
+        alert_manager = None
+        class _DummySeverity:
+            def __init__(self, *_args, **_kwargs):
+                pass
+        class _DummyType(_DummySeverity):
+            pass
+        AlertSeverity = _DummySeverity  # type: ignore
+        AlertType = _DummyType  # type: ignore
 
 # Optional: Gemini summaries
 try:
     import google.generativeai as genai
 except Exception:
     genai = None
+
+LOGIN_HTML = """
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Login - Guardia-AI</title>
+    <style>
+        body { font-family: system-ui, Arial, sans-serif; background: #0b0e11; color: #eaecef; display:flex; align-items:center; justify-content:center; height:100vh; }
+        .card { background:#0f141a; border:1px solid #1e232a; padding:24px; border-radius:8px; width: 320px; }
+        h1 { font-size:18px; margin:0 0 16px; }
+        input { width:100%; padding:10px; margin:8px 0; border:1px solid #1e232a; background:#0b0f14; color:#eaecef; border-radius:6px; }
+        button { width:100%; padding:10px; margin-top:8px; background:#1f2937; border:1px solid #374151; color:#eaecef; border-radius:6px; cursor:pointer; }
+        .alt { text-align:center; font-size:12px; color:#9ca3af; margin-top:8px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🛡️ Guardia-AI Login</h1>
+        <input id="username" placeholder="Username"/>
+        <input id="password" type="password" placeholder="Password"/>
+        <button onclick="login()">Login</button>
+        <button onclick="register()">Register</button>
+        <div id="msg" class="alt"></div>
+    </div>
+    <script>
+        async function login() {
+            const body = { username: document.getElementById('username').value, password: document.getElementById('password').value };
+            const r = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+            const j = await r.json();
+            document.getElementById('msg').innerText = j.ok ? 'Logged in' : (j.error||'Error');
+            if (j.ok) location.href = '/';
+        }
+        async function register() {
+            const body = { username: document.getElementById('username').value, password: document.getElementById('password').value };
+            const r = await fetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+            const j = await r.json();
+            document.getElementById('msg').innerText = j.ok ? 'Registered' : (j.error||'Error');
+            if (j.ok) location.href = '/';
+        }
+    </script>
+</body>
+</html>
+"""
 
 HTML = """
 <!doctype html>
@@ -64,10 +203,46 @@ HTML = """
     button { padding: 8px 16px; background: #1f2937; border: 1px solid #374151; color: #eaecef; border-radius: 4px; cursor: pointer; margin-right: 8px; }
     button:hover { background: #374151; }
     .hidden { display: none; }
+        /* Onboarding overlay */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .wizard { background: #0f141a; border: 1px solid #1e232a; border-radius: 8px; width: 520px; max-width: 95vw; padding: 20px; }
+        .wizard h2 { margin: 0 0 12px; }
+        .wizard .actions { display: flex; gap: 8px; margin-top: 12px; }
   </style>
 </head>
 <body>
   <h1>🛡️ Guardia-AI Security System</h1>
+
+    <!-- Onboarding Overlay -->
+    <div id="onboard_overlay" class="overlay">
+        <div class="wizard">
+            <h2>Welcome! Let’s set up your experience</h2>
+            <div id="wiz_step1">
+                <p>Would you like to enable face recognition for personalized alerts and trusted-person detection?</p>
+                <div class="actions">
+                    <button onclick="onFaceIntent('enroll')">Yes, set it up</button>
+                    <button onclick="onFaceIntent('later')">Not now</button>
+                    <button onclick="onFaceIntent('declined')">No thanks</button>
+                </div>
+            </div>
+            <div id="wiz_step2" class="hidden">
+                <p>Enroll your face now. You can upload a photo or capture from the live stream.</p>
+                <input id="wiz_file" type="file" accept="image/*" />
+                <div class="actions">
+                    <button onclick="wizUpload()">Upload photo</button>
+                    <button onclick="wizCapture()">Capture from stream</button>
+                    <button onclick="wizSkipLater()">Skip for now</button>
+                </div>
+                <div id="wiz_msg" class="status"></div>
+            </div>
+            <div id="wiz_done" class="hidden">
+                <p>All set! You can add faces later from the dashboard.</p>
+                <div class="actions">
+                    <button onclick="closeWizard()">Go to dashboard</button>
+                </div>
+            </div>
+        </div>
+    </div>
   
   <div class="panel">
     <div id="auth_state" class="status">Not logged in</div>
@@ -76,6 +251,8 @@ HTML = """
       <input id="auth_pass" type="password" placeholder="Password"/>
       <button onclick="login()">Login</button>
       <button onclick="register()">Register</button>
+    <button onclick="logout()">Logout</button>
+    <button onclick="resumeOnboarding()">Resume onboarding</button>
     </div>
   </div>
 
@@ -90,6 +267,15 @@ HTML = """
         <h2>📊 Recent Events</h2>
         <div class="events" id="events"></div>
       </div>
+
+            <div class="panel">
+                <h2>🚨 Alerts</h2>
+                <div id="alerts_stats" class="status">No data</div>
+                <div id="alerts_list" class="events"></div>
+                <div style="margin-top:8px;">
+                    <button onclick="testAlert()">Send Test Notification</button>
+                </div>
+            </div>
     </div>
     
     <div>
@@ -108,6 +294,17 @@ HTML = """
         <div id="profile_status" class="status"></div>
         <div id="jobs_list" style="margin-top: 12px; font-size: 13px;"></div>
       </div>
+
+            <div class="panel">
+                <h2>🧠 Performance</h2>
+                <div id="perf_summary" class="status">No performance data</div>
+                <div id="perf_current" class="metrics" style="margin-top:8px;"></div>
+            </div>
+
+            <div class="panel">
+                <h2>🔧 Capture Diagnostics</h2>
+                <div class="metrics" id="capture_diag"></div>
+            </div>
     </div>
   </div>
       <div id="summary" class="summary"></div>
@@ -115,19 +312,35 @@ HTML = """
   </div>
   <footer>Press 'q' in the local window to stop capture. This dashboard auto-refreshes.</footer>
   <script>
-    async function refresh() {
-      try {
-        const m = await fetch('/api/metrics').then(r => r.json());
-        const e = await fetch('/api/events').then(r => r.json());
+        async function refresh() {
+            try {
+                // Check auth first; if not logged in, skip other calls to avoid 401 spam
+                const auth = await fetch('/api/auth/state').then(r => r.json());
+                const authState = document.getElementById('auth_state');
+                if (authState) {
+                    authState.innerText = auth.username ? ('Logged in as ' + auth.username) : 'Not logged in';
+                }
+                if (!auth.username) {
+                    setTimeout(refresh, 1000);
+                    return;
+                }
+
+    // Onboarding state
+    const onboard = await fetch('/api/onboarding/state').then(r => r.json());
+    handleOnboarding(onboard);
+
+                const m = await fetch('/api/metrics').then(r => r.json());
+                const e = await fetch('/api/events').then(r => r.json());
                 const sys = await fetch('/api/system').then(r => r.json());
                 const zn = await fetch('/api/zones').then(r => r.json());
-    const s = await fetch('/api/summary').then(r => r.json());
-    const envs = await fetch('/api/envs').then(r => r.json());
-    const faces = await fetch('/api/face/users').then(r => r.json());
-    const trusted = await fetch('/api/face/trusted').then(r => r.json()).catch(() => ({items:[]}));
-    const auth = await fetch('/api/auth/state').then(r => r.json());
-    const prof = auth.username ? await fetch('/api/profile').then(r => r.json()) : {profile: null};
-    const jobs = auth.username ? await fetch('/api/train/jobs').then(r => r.json()) : {jobs: []};
+                const s = await fetch('/api/summary').then(r => r.json());
+                const perf = await fetch('/api/performance').then(r => r.ok ? r.json() : null).catch(()=>null);
+                const alerts = await fetch('/api/alerts').then(r => r.ok ? r.json() : {alerts:[], stats:{}}).catch(()=>({alerts:[], stats:{}}));
+                const envs = await fetch('/api/envs').then(r => r.json());
+                const faces = await fetch('/api/face/users').then(r => r.json());
+                const trusted = await fetch('/api/face/trusted').then(r => r.json()).catch(() => ({items:[]}));
+                const prof = await fetch('/api/profile').then(r => r.json());
+                const jobs = await fetch('/api/train/jobs').then(r => r.json());
         const metrics = document.getElementById('metrics');
         metrics.innerHTML = '';
         Object.entries(m).forEach(([k, v]) => {
@@ -171,13 +384,10 @@ HTML = """
             slInput.value = (trusted.suppress_labels || []).join(',');
             slInput.dataset.init = '1';
         }
-                const authState = document.getElementById('auth_state');
-                if (authState) {
-                    authState.innerText = auth.username ? ('Logged in as ' + auth.username) : 'Not logged in';
-                }
+                // authState updated above
                 const profDiv = document.getElementById('profile_status');
                 if (profDiv) {
-                    if (prof.profile) {
+                    if (prof && prof.profile) {
                         profDiv.innerText = 'Purpose: ' + (prof.profile.purpose || '-') + ' | Personalized: ' + (!!prof.profile.personalized);
                     } else {
                         profDiv.innerText = '';
@@ -186,7 +396,7 @@ HTML = """
                 const jobsDiv = document.getElementById('jobs_list');
                 if (jobsDiv) {
                     jobsDiv.innerHTML = '';
-                    (jobs.jobs || []).slice().reverse().forEach(j => {
+                    ((jobs && jobs.jobs) || []).slice().reverse().forEach(j => {
                         const d = new Date((j.updated_ts||j.created_ts||0)*1000).toLocaleString();
                         const res = j.result ? ' (has result)' : '';
                         const err = j.error ? (' error: ' + j.error) : '';
@@ -194,9 +404,103 @@ HTML = """
                         jobsDiv.innerHTML += `<div><b>${j.id}</b> [${j.status}] ${d}${res}${err} ${btn}</div>`;
                     });
                 }
+
+                // Performance summary
+                const perfDiv = document.getElementById('perf_summary');
+                const perfCur = document.getElementById('perf_current');
+                if (perfDiv) {
+                    if (!perf || !perf.summary) {
+                        perfDiv.innerText = 'Performance monitor not available';
+                    } else {
+                        const s = perf.summary || {};
+                        const a = perf.adaptive_settings || {};
+                        perfDiv.innerText = `avg cpu ${s.avg_cpu_percent}% | avg mem ${s.avg_memory_percent}% | avg fps ${s.avg_fps} | avg inf ${s.avg_inference_time_ms}ms | samples ${s.samples_collected}`;
+                        perfCur.innerHTML = '';
+                        const cm = perf.current_metrics || {};
+                        Object.entries(cm).forEach(([k, v]) => {
+                            perfCur.innerHTML += `<div class="metric"><div class="label">${k}</div><div class="value">${v}</div></div>`;
+                        });
+                    }
+                }
+
+                // Alerts
+                const aStats = document.getElementById('alerts_stats');
+                const aList = document.getElementById('alerts_list');
+                if (aStats && aList) {
+                    const st = alerts.stats || {};
+                    aStats.innerText = `total: ${st.total||0} | unack: ${st.unacknowledged||0} | by severity: ${JSON.stringify(st.by_severity||{})}`;
+                    aList.innerHTML = '';
+                    (alerts.alerts||[]).forEach(al => {
+                        const ts = new Date((al.timestamp||al.created_ts||0)*1000).toLocaleString();
+                        const sev = al.severity || al.level || 'UNKNOWN';
+                        const id = al.id || al.alert_id || '';
+                        const acked = !!al.acknowledged;
+                        const btn = acked ? '' : `<button onclick=\"ackAlert('${id}')\">Acknowledge</button>`;
+                        aList.innerHTML += `<div class="event ${sev.toLowerCase()}"><div><b>${ts}</b> [${sev}] ${al.type||al.kind||'ALERT'}</div><div>${al.title||al.message||'-'}</div><div>${al.description||''}</div><div>id: <code>${id}</code> ${acked?'(ack)':''} ${btn}</div></div>`;
+                    });
+                }
+
+                // Capture diagnostics from metrics
+                const capDiv = document.getElementById('capture_diag');
+                if (capDiv) {
+                    const diagKeys = ['capture_backend','capture_source','frame_width','frame_height','fps','frames','frames_skipped','frame_skip_ratio','read_failures','last_error'];
+                    capDiv.innerHTML = '';
+                    diagKeys.forEach(k => {
+                        if (m[k] !== undefined) {
+                            capDiv.innerHTML += `<div class="metric"><div class="label">${k}</div><div class="value">${m[k]}</div></div>`;
+                        }
+                    });
+                }
       } catch (err) { /* ignore */ }
       setTimeout(refresh, 1000);
     }
+
+        function handleOnboarding(ob) {
+            const ov = document.getElementById('onboard_overlay');
+            const s1 = document.getElementById('wiz_step1');
+            const s2 = document.getElementById('wiz_step2');
+            const sd = document.getElementById('wiz_done');
+            if (!ov || !ob) return;
+            if (ob.done) {
+                ov.style.display = 'none';
+                return;
+            }
+            ov.style.display = 'flex';
+            const intent = ob.steps?.face_intent || 'unknown';
+            const enrolled = !!ob.steps?.face_enrolled;
+            s1.classList.toggle('hidden', intent !== 'unknown');
+            s2.classList.toggle('hidden', !(intent === 'enroll' && !enrolled));
+            sd.classList.toggle('hidden', !(intent !== 'enroll' || enrolled));
+        }
+
+        async function onFaceIntent(choice) {
+            await fetch('/api/onboarding/face/intent', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ choice }) });
+            // If declined, complete immediately
+            if (choice === 'declined' || choice === 'later') {
+                await fetch('/api/onboarding/complete', { method:'POST' });
+            }
+        }
+        async function wizUpload() {
+            const f = document.getElementById('wiz_file').files[0];
+            if (!f) { document.getElementById('wiz_msg').innerText = 'Pick a photo first'; return; }
+            const fd = new FormData(); fd.append('file', f);
+            const r = await fetch('/api/onboarding/face/enroll-upload', { method:'POST', body: fd });
+            const j = await r.json().catch(()=>({ok:false}));
+            document.getElementById('wiz_msg').innerText = j.ok ? 'Enrolled' : (j.error||'Failed');
+            if (j.ok) await fetch('/api/onboarding/complete', { method:'POST' });
+        }
+        async function wizCapture() {
+            const r = await fetch('/api/onboarding/face/enroll-from-frame', { method:'POST' });
+            const j = await r.json().catch(()=>({ok:false}));
+            document.getElementById('wiz_msg').innerText = j.ok ? 'Enrolled from stream' : (j.error||'Failed');
+            if (j.ok) await fetch('/api/onboarding/complete', { method:'POST' });
+        }
+        async function wizSkipLater() {
+            await onFaceIntent('later');
+        }
+        function closeWizard() {
+            document.getElementById('onboard_overlay').style.display = 'none';
+        }
         async function addZone() {
             const zx1 = parseInt(document.getElementById('zx1').value || '0');
             const zy1 = parseInt(document.getElementById('zy1').value || '0');
@@ -253,6 +557,32 @@ HTML = """
             await fetch('/api/train/jobs/' + encodeURIComponent(id) + '/cancel', { method: 'POST' });
             refresh();
         }
+        async function ackAlert(id) {
+            if (!id) return;
+            await fetch('/api/alerts/acknowledge', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ alert_id: id }) });
+            refresh();
+        }
+        async function testAlert() {
+            await fetch('/api/alerts/test', { method:'POST' }).catch(()=>{});
+        }
+        async function login() {
+            const body = { username: document.getElementById('auth_user').value, password: document.getElementById('auth_pass').value };
+            await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+            setTimeout(refresh, 100);
+        }
+        async function register() {
+            const body = { username: document.getElementById('auth_user').value, password: document.getElementById('auth_pass').value };
+            await fetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+            setTimeout(refresh, 100);
+        }
+        async function logout() {
+            await fetch('/api/auth/logout', { method:'POST' });
+            location.reload();
+        }
+        async function resumeOnboarding() {
+            const ob = await fetch('/api/onboarding/state').then(r => r.json()).catch(()=>null);
+            if (ob) { handleOnboarding(ob); }
+        }
     refresh();
   </script>
 </body>
@@ -260,19 +590,61 @@ HTML = """
 """
 
 class DetectorThread(threading.Thread):
-    def __init__(self, cfg: AppConfig, metrics: Dict[str, Any], events: Deque[Dict[str, Any]], event_hook: Callable[[Dict[str, Any]], None] | None = None, face_auth=None):
+    def __init__(self, cfg: AppConfig, metrics: Dict[str, Any], events: Deque[Dict[str, Any]], event_hook: Callable[[Dict[str, Any]], None] | None = None, face_auth=None, perf=None, dcache=None):
         super().__init__(daemon=True)
         self.cfg = cfg
         self.metrics = metrics
         self.events = events
         self.stop_flag = threading.Event()
         self.frame_lock = threading.Lock()
-        self.last_frame: np.ndarray | None = None
+        # last processed frame buffer
+        self.last_frame = None
+        # hooks and collaborators
         self.event_hook = event_hook
         self.face_auth = face_auth
+        self.perf = perf
+        self.dcache = dcache
+        # capture diagnostics
+        self.capture_backend = None
+        self.read_failures = 0
+        self.last_error = None
+
+    def _open_capture(self):
+        src = self.cfg.source
+        try:
+            # Prefer DirectShow on Windows for webcams
+            if isinstance(src, int) or (isinstance(src, str) and src.isdigit()):
+                cam_idx = int(src)
+                cap = cv2.VideoCapture(cam_idx, cv2.CAP_DSHOW)
+                self.capture_backend = 'CAP_DSHOW'
+            else:
+                # Try default backend
+                cap = cv2.VideoCapture(src)
+                self.capture_backend = 'DEFAULT'
+                # Fallback to FFMPEG for network streams
+                if not cap.isOpened() and str(src).lower().startswith(("rtsp://", "http://", "https://")):
+                    cap.release()
+                    cap = cv2.VideoCapture(src, cv2.CAP_FFMPEG)
+                    self.capture_backend = 'CAP_FFMPEG'
+        except Exception:
+            cap = cv2.VideoCapture(self.cfg.source)
+            self.capture_backend = 'DEFAULT'
+        return cap
 
     def run(self) -> None:
-        cap = cv2.VideoCapture(self.cfg.source)
+        cap = self._open_capture()
+        if not cap or not cap.isOpened():
+            print("[Guardia] ERROR: Unable to open video source:", self.cfg.source)
+            # Small retry loop before giving up
+            for i in range(3):
+                time.sleep(1.0)
+                cap = self._open_capture()
+                if cap and cap.isOpened():
+                    break
+            if not cap or not cap.isOpened():
+                print("[Guardia] FATAL: Video source cannot be opened. Exiting detector thread.")
+                self.last_error = 'open_failed'
+                return
         detector = YoloDetector(
             weights=self.cfg.yolo_weights,
             conf=self.cfg.yolo_conf_thresh,
@@ -280,6 +652,7 @@ class DetectorThread(threading.Thread):
             imgsz=self.cfg.yolo_imgsz,
             device=self.cfg.device,
             half=self.cfg.half,
+            extra_weights=self.cfg.yolo_extra_weights,
         )
         vision = GoogleVisionClient(min_score=self.cfg.vision_min_score) if self.cfg.use_vision else GoogleVisionClient(1.0)
         pose = PoseAnalyzer(self.cfg.pose_min_detection_confidence, self.cfg.pose_min_tracking_confidence) if self.cfg.use_pose else PoseAnalyzer(1, 1)
@@ -293,29 +666,72 @@ class DetectorThread(threading.Thread):
                                   radius_px=self.cfg.loiter_radius_px,
                                   classes=set(self.cfg.loiter_classes))
         t0 = time.time()
+        
+        # Performance monitoring integration (placeholders for future enhancement)
+        fps_counter = 0
+        fps_timer = time.time()
+        frames_skipped = 0
 
         while not self.stop_flag.is_set():
+            frame_start_time = time.time()
+            
             ok, frame = cap.read()
             if not ok:
-                break
+                self.read_failures += 1
+                self.last_error = 'read_failed'
+                time.sleep(0.05)
+                continue
             frame_idx += 1
+            fps_counter += 1
             self.metrics['frames'] = frame_idx
 
             process_this = True
+            skip_reason = None
+            
             if self.cfg.use_motion_filter:
                 changed, prev_gray = motion_changed(prev_gray, frame)
-                process_this = changed
+                if not changed:
+                    process_this = False
+                    skip_reason = "no_motion"
 
             if self.cfg.frameskip > 0 and (frame_idx % self.cfg.frameskip != 0):
                 process_this = False
+                skip_reason = "frameskip"
+                frames_skipped += 1
 
             detections: List[Tuple[int, int, int, int, str, float]] = []
+            inference_start = time.time()
+            detection_count = 0
+            
             if process_this and detector.available():
                 if self.cfg.track_interval <= 1 or frame_idx % self.cfg.track_interval == 0:
-                    dets = detector.detect(frame)
+                    # Attempt cache
+                    dets_cached = None
+                    if ENHANCED_MODULES_AVAILABLE and self.dcache is not None:
+                        try:
+                            dets_cached = self.dcache.get_detection(frame)
+                        except Exception:
+                            dets_cached = None
+                    if dets_cached is not None:
+                        dets = dets_cached
+                    else:
+                        # if extra models exist, use merged detection
+                        if detector.available_multi():
+                            dets = detector.detect_multi(frame)
+                        else:
+                            dets = detector.detect(frame)
+                        if ENHANCED_MODULES_AVAILABLE and self.dcache is not None:
+                            try:
+                                self.dcache.cache_detection(frame, dets)
+                            except Exception:
+                                pass
                     detections = tracker.update(dets)
                 else:
                     detections = tracker.update([])
+                
+                detection_count = len(detections)
+            
+            inference_time = (time.time() - inference_start) * 1000
 
             harmful_count = 0
             for (x1, y1, x2, y2, label, conf) in detections:
@@ -401,6 +817,16 @@ class DetectorThread(threading.Thread):
                     if len(self.events) > 200:
                         self.events.pop()
                     logger.log(ev)
+                    if ENHANCED_MODULES_AVAILABLE and (alert_manager is not None):
+                        try:
+                            sev_hi = getattr(AlertSeverity, 'CRITICAL', None)
+                            sev_hi2 = getattr(AlertSeverity, 'HIGH', None)
+                            t_threat = getattr(AlertType, 'THREAT_DETECTED', None)
+                            if sev_hi and sev_hi2 and t_threat:
+                                sev = sev_hi if any(h in ('gun','rifle','pistol') for h in [label.lower(), *[l.lower() for l in labels]]) else sev_hi2
+                                alert_manager.create_alert(t_threat, sev, f"Harmful object detected: {label}", f"Detected {label} with conf {conf:.2f}", data=ev)
+                        except Exception:
+                            pass
 
             # loitering detection based on tracks
             for tid, tr in loiter.check(tracker.get_tracks()):
@@ -423,6 +849,14 @@ class DetectorThread(threading.Thread):
                 if len(self.events) > 200:
                     self.events.pop()
                 logger.log(ev)
+                if ENHANCED_MODULES_AVAILABLE and (alert_manager is not None):
+                    try:
+                        sev_med = getattr(AlertSeverity, 'MEDIUM', None)
+                        t_loit = getattr(AlertType, 'LOITERING', None)
+                        if sev_med and t_loit:
+                            alert_manager.create_alert(t_loit, sev_med, "Loitering detected", "An individual has been detected loitering.", data=ev)
+                    except Exception:
+                        pass
 
             # draw hazard zones and check breaches
             for zx1, zy1, zx2, zy2 in self.cfg.hazard_zones:
@@ -451,13 +885,60 @@ class DetectorThread(threading.Thread):
                             if len(self.events) > 200:
                                 self.events.pop()
                             logger.log(ev)
+                            if ENHANCED_MODULES_AVAILABLE and (alert_manager is not None):
+                                try:
+                                    sev_med = getattr(AlertSeverity, 'MEDIUM', None)
+                                    t_zb = getattr(AlertType, 'ZONE_BREACH', None)
+                                    if sev_med and t_zb:
+                                        alert_manager.create_alert(t_zb, sev_med, "Zone breach detected", "Object entered restricted zone.", data=ev)
+                                except Exception:
+                                    pass
                             break
+
+            # Calculate performance metrics
+            frame_processing_time = (time.time() - frame_start_time) * 1000
+            frame_skip_ratio = frames_skipped / max(1, frame_idx)
+            
+            # Update FPS calculation
+            if time.time() - fps_timer >= 1.0:
+                actual_fps = fps_counter / (time.time() - fps_timer)
+                fps_counter = 0
+                fps_timer = time.time()
 
             # metrics
             dt = time.time() - t0
-            self.metrics['fps'] = round(frame_idx / dt, 1) if dt > 0 else 0.0
+            current_fps = round(frame_idx / dt, 1) if dt > 0 else 0.0
+            self.metrics['fps'] = current_fps
             self.metrics['harmful_last_frame'] = harmful_count
             self.metrics['last_update'] = int(time.time())
+            # capture diagnostics in metrics
+            try:
+                w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+                h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+                self.metrics['frame_width'] = w
+                self.metrics['frame_height'] = h
+            except Exception:
+                pass
+            self.metrics['capture_backend'] = (self.capture_backend or 'unknown')
+            self.metrics['capture_source'] = str(self.cfg.source)
+            self.metrics['frames_skipped'] = frames_skipped
+            self.metrics['frame_skip_ratio'] = frame_skip_ratio
+            self.metrics['read_failures'] = self.read_failures
+            if self.last_error:
+                self.metrics['last_error'] = self.last_error
+
+            # Record performance metrics
+            if ENHANCED_MODULES_AVAILABLE and self.perf is not None:
+                try:
+                    self.perf.record_metrics(
+                        fps=current_fps,
+                        inference_time_ms=inference_time,
+                        frame_processing_time_ms=frame_processing_time,
+                        detection_count=detection_count,
+                        frame_skip_ratio=frame_skip_ratio,
+                    )
+                except Exception:
+                    pass
 
             with self.frame_lock:
                 self.last_frame = frame
@@ -523,7 +1004,7 @@ def create_app(cfg: AppConfig) -> Flask:
             if pub.available():
                 pub.publish_json(ev)
             if cfg.use_gcs_upload and gcs.available():
-                jpg = det.get_jpeg()
+                jpg = det.get_jpeg() if det is not None else None
                 if jpg:
                     ts = int(ev.get('ts', time.time()))
                     label = str(ev.get('label', 'event')).replace(' ', '_')
@@ -537,8 +1018,21 @@ def create_app(cfg: AppConfig) -> Flask:
     # Shared helpers
     face = FaceAuth(cfg.face_db_dir) if cfg.use_face_auth else None
 
-    det = DetectorThread(cfg, metrics, events, event_hook=_mirror_event, face_auth=face)
-    det.start()
+    det: DetectorThread | None = None
+    det_lock = threading.Lock()
+    def ensure_detector_started():
+        nonlocal det
+        with det_lock:
+            if det is None:
+                d = DetectorThread(
+                    cfg, metrics, events,
+                    event_hook=_mirror_event,
+                    face_auth=face,
+                    perf=(perf_mon if ENHANCED_MODULES_AVAILABLE else None),
+                    dcache=(detection_cache if ENHANCED_MODULES_AVAILABLE else None),
+                )
+                d.start()
+                det = d
 
     # Gemini client (optional)
     gemini_api_key = os.getenv('GEMINI_API_KEY')
@@ -551,64 +1045,7 @@ def create_app(cfg: AppConfig) -> Flask:
         except Exception:
             model = None
 
-    @app.route('/')
-    def index():
-        return render_template_string(HTML)
-
-    @app.route('/stream')
-    def stream():
-        def gen():
-            while True:
-                jpg = det.get_jpeg()
-                if jpg is None:
-                    time.sleep(0.05)
-                    continue
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + jpg + b'\r\n')
-                time.sleep(0.03)
-        return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-    @app.route('/api/metrics')
-    def api_metrics():
-        return jsonify(metrics)
-
-    @app.route('/api/events')
-    def api_events():
-        return jsonify(list(events)[:50])
-
-    @app.route('/api/system')
-    def api_system():
-        cpu = psutil.cpu_percent(interval=0.1)
-        mem = psutil.virtual_memory()
-        swap = psutil.swap_memory()
-        return jsonify({
-            'cpu_percent': cpu,
-            'mem_total_mb': round(mem.total / (1024*1024), 1),
-            'mem_used_mb': round(mem.used / (1024*1024), 1),
-            'mem_percent': mem.percent,
-            'swap_total_mb': round(swap.total / (1024*1024), 1),
-            'swap_used_mb': round(swap.used / (1024*1024), 1),
-            'swap_percent': swap.percent,
-        })
-
-    @app.route('/api/summary')
-    def api_summary():
-        if model is None or not events:
-            return jsonify({'summary': ''})
-        try:
-            recent = list(events)[:20]
-            text = "\n".join([
-                f"{time.strftime('%H:%M:%S', time.localtime(e['ts']))} | harmful={e.get('harmful')} label={e.get('label')} conf={e.get('confidence')} labels={','.join(e.get('allLabels', []))}"
-                for e in recent
-            ])
-            prompt = f"""Summarize the following security detection events into 2-4 bullet points. Focus on harmful items and trends.\n\n{text}\n"""
-            resp = model.generate_content(prompt)
-            out = resp.text if hasattr(resp, 'text') else ''
-            return jsonify({'summary': out})
-        except Exception:
-            return jsonify({'summary': ''})
-
-    # Auth & tokens
+    # Auth & tokens (moved early so routes below can reference current_user())
     def _b64url(data: bytes) -> str:
         import base64
         return base64.urlsafe_b64encode(data).decode('ascii').rstrip('=')
@@ -660,6 +1097,117 @@ def create_app(cfg: AppConfig) -> Flask:
                 return u
         return None
 
+    @app.route('/login')
+    def login_page():
+        # If already logged in, go home
+        if cfg.require_auth and current_user():
+            return redirect('/')
+        return render_template_string(LOGIN_HTML)
+
+    @app.route('/')
+    def index():
+        if cfg.require_auth and not current_user():
+            return redirect(url_for('login_page'))
+        ensure_detector_started()
+        return render_template_string(HTML)
+
+    @app.route('/stream')
+    def stream():
+        if cfg.require_auth and not current_user():
+            return redirect(url_for('login_page'))
+        ensure_detector_started()
+        dref = det  # after ensure, det should be non-None
+        def gen():
+            while True:
+                jpg = dref.get_jpeg() if (dref is not None) else None
+                if jpg is None:
+                    time.sleep(0.05)
+                    continue
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + jpg + b'\r\n')
+                time.sleep(0.03)
+        return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+    @app.route('/api/metrics')
+    def api_metrics():
+        if cfg.require_auth and not current_user():
+            return jsonify({'error':'unauthorized'}), 401
+        u = current_user()
+        if ENHANCED_MODULES_AVAILABLE and api_cache is not None:
+            cached = api_cache.get_response('/api/metrics', user=u)
+            if cached is not None:
+                return jsonify(cached)
+        data = dict(metrics)
+        if ENHANCED_MODULES_AVAILABLE and api_cache is not None:
+            api_cache.cache_response('/api/metrics', data, user=u)
+        return jsonify(data)
+
+    @app.route('/api/events')
+    def api_events():
+        if cfg.require_auth and not current_user():
+            return jsonify({'error':'unauthorized'}), 401
+        u = current_user()
+        if ENHANCED_MODULES_AVAILABLE and api_cache is not None:
+            cached = api_cache.get_response('/api/events', user=u)
+            if cached is not None:
+                return jsonify(cached)
+        data = list(events)[:50]
+        if ENHANCED_MODULES_AVAILABLE and api_cache is not None:
+            api_cache.cache_response('/api/events', data, user=u)
+        return jsonify(data)
+
+    @app.route('/api/system')
+    def api_system():
+        if cfg.require_auth and not current_user():
+            return jsonify({'error':'unauthorized'}), 401
+        u = current_user()
+        if ENHANCED_MODULES_AVAILABLE and api_cache is not None:
+            cached = api_cache.get_response('/api/system', user=u)
+            if cached is not None:
+                return jsonify(cached)
+        cpu = psutil.cpu_percent(interval=0.0)
+        mem = psutil.virtual_memory()
+        swap = psutil.swap_memory()
+        data = {
+            'cpu_percent': cpu,
+            'mem_total_mb': round(mem.total / (1024*1024), 1),
+            'mem_used_mb': round(mem.used / (1024*1024), 1),
+            'mem_percent': mem.percent,
+            'swap_total_mb': round(swap.total / (1024*1024), 1),
+            'swap_used_mb': round(swap.used / (1024*1024), 1),
+            'swap_percent': swap.percent,
+        }
+        if ENHANCED_MODULES_AVAILABLE and api_cache is not None:
+            api_cache.cache_response('/api/system', data, user=u)
+        return jsonify(data)
+
+    @app.route('/api/summary')
+    def api_summary():
+        if cfg.require_auth and not current_user():
+            return jsonify({'summary': ''})
+        u = current_user()
+        if ENHANCED_MODULES_AVAILABLE and api_cache is not None:
+            cached = api_cache.get_response('/api/summary', user=u)
+            if cached is not None:
+                return jsonify(cached)
+        if model is None or not events:
+            return jsonify({'summary': ''})
+        try:
+            recent = list(events)[:20]
+            text = "\n".join([
+                f"{time.strftime('%H:%M:%S', time.localtime(e['ts']))} | harmful={e.get('harmful')} label={e.get('label')} conf={e.get('confidence')} labels={','.join(e.get('allLabels', []))}"
+                for e in recent
+            ])
+            prompt = f"""Summarize the following security detection events into 2-4 bullet points. Focus on harmful items and trends.\n\n{text}\n"""
+            resp = model.generate_content(prompt)
+            out = resp.text if hasattr(resp, 'text') else ''
+            data = {'summary': out}
+            if ENHANCED_MODULES_AVAILABLE and api_cache is not None:
+                api_cache.cache_response('/api/summary', data, user=u)
+            return jsonify(data)
+        except Exception:
+            return jsonify({'summary': ''})
+
     @app.route('/api/auth/register', methods=['POST'])
     def api_register():
         body = request.get_json(silent=True) or {}
@@ -692,6 +1240,104 @@ def create_app(cfg: AppConfig) -> Flask:
     @app.route('/api/auth/state')
     def api_auth_state():
         return jsonify({'username': current_user()})
+
+    @app.route('/api/auth/logout', methods=['POST'])
+    def api_logout():
+        resp = make_response(jsonify({'ok': True}))
+        resp.delete_cookie('auth')
+        return resp
+
+    # Onboarding APIs
+    def _onboard_get(u: str) -> Dict[str, Any]:
+        prof = user_store.load_profile(u)
+        ob = prof.get('onboarding') if isinstance(prof, dict) else None
+        if not isinstance(ob, dict):
+            ob = {'steps': {'face_intent': 'unknown', 'face_enrolled': False}, 'done': False}
+        return ob
+
+    def _onboard_save(u: str, ob: Dict[str, Any]) -> None:
+        prof = user_store.load_profile(u)
+        if not isinstance(prof, dict):
+            prof = {}
+        prof['onboarding'] = ob
+        user_store.save_profile(u, prof)
+
+    @app.route('/api/onboarding/state')
+    def api_onboarding_state():
+        u = current_user()
+        if not u:
+            return jsonify({'done': False, 'steps': {'face_intent': 'unknown', 'face_enrolled': False}})
+        return jsonify(_onboard_get(u))
+
+    @app.route('/api/onboarding/face/intent', methods=['POST'])
+    def api_onboarding_face_intent():
+        u = current_user()
+        if not u:
+            return jsonify({'ok': False, 'error': 'not logged in'}), 401
+        body = request.get_json(silent=True) or {}
+        choice = str(body.get('choice','unknown')).strip().lower()
+        if choice not in ('enroll','later','declined'):
+            return jsonify({'ok': False, 'error': 'invalid choice'}), 400
+        ob = _onboard_get(u)
+        ob['steps']['face_intent'] = choice
+        # If declined, mark done right away
+        if choice in ('later','declined'):
+            ob['done'] = True
+        _onboard_save(u, ob)
+        return jsonify({'ok': True, 'state': ob})
+
+    @app.route('/api/onboarding/face/enroll-upload', methods=['POST'])
+    def api_onboarding_face_enroll_upload():
+        u = current_user()
+        if not u:
+            return jsonify({'ok': False, 'error': 'not logged in'}), 401
+        if not face:
+            return jsonify({'ok': False, 'error': 'face auth disabled'}), 400
+        file = request.files.get('file')
+        if not file:
+            return jsonify({'ok': False, 'error': 'file required'}), 400
+        img_array = np.frombuffer(file.read(), np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        if img is None:
+            return jsonify({'ok': False, 'error': 'decode failed'}), 400
+        ok = face.enroll(u, img)
+        ob = _onboard_get(u)
+        if ok:
+            ob['steps']['face_enrolled'] = True
+        _onboard_save(u, ob)
+        return jsonify({'ok': ok, 'state': ob})
+
+    @app.route('/api/onboarding/face/enroll-from-frame', methods=['POST'])
+    def api_onboarding_face_enroll_from_frame():
+        u = current_user()
+        if not u:
+            return jsonify({'ok': False, 'error': 'not logged in'}), 401
+        if not face:
+            return jsonify({'ok': False, 'error': 'face auth disabled'}), 400
+        ensure_detector_started()
+        jpg = det.get_jpeg() if det else None
+        if not jpg:
+            return jsonify({'ok': False, 'error': 'no frame'}), 400
+        img_array = np.frombuffer(jpg, np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        if img is None:
+            return jsonify({'ok': False, 'error': 'decode failed'}), 400
+        ok = face.enroll(u, img)
+        ob = _onboard_get(u)
+        if ok:
+            ob['steps']['face_enrolled'] = True
+        _onboard_save(u, ob)
+        return jsonify({'ok': ok, 'state': ob})
+
+    @app.route('/api/onboarding/complete', methods=['POST'])
+    def api_onboarding_complete():
+        u = current_user()
+        if not u:
+            return jsonify({'ok': False, 'error': 'not logged in'}), 401
+        ob = _onboard_get(u)
+        ob['done'] = True
+        _onboard_save(u, ob)
+        return jsonify({'ok': True, 'state': ob})
 
     @app.route('/api/profile', methods=['GET'])
     def api_profile():
@@ -813,6 +1459,8 @@ def create_app(cfg: AppConfig) -> Flask:
     @app.route('/api/envs', methods=['GET', 'POST', 'DELETE'])
     def api_envs():
         u = current_user()
+        if cfg.require_auth and not u:
+            return jsonify({'error': 'not logged in'}), 401
         if request.method == 'GET':
             return jsonify({'active': envmgr.get_active(u), 'items': envmgr.list_envs(u)})
         if request.method == 'POST':
@@ -879,12 +1527,16 @@ def create_app(cfg: AppConfig) -> Flask:
     # Face auth API
     @app.route('/api/face/users', methods=['GET'])
     def api_face_users():
+        if cfg.require_auth and not current_user():
+            return jsonify({'enabled': False, 'users': []}), 401
         if not face:
             return jsonify({'enabled': False, 'users': []})
         return jsonify({'enabled': True, 'users': face.list_users()})
 
     @app.route('/api/face/users/<name>', methods=['DELETE'])
     def api_face_delete(name: str):
+        if cfg.require_auth and not current_user():
+            return jsonify({'enabled': False, 'ok': False}), 401
         if not face:
             return jsonify({'enabled': False, 'ok': False})
         ok = face.delete_user(name)
@@ -892,6 +1544,8 @@ def create_app(cfg: AppConfig) -> Flask:
 
     @app.route('/api/face/enroll/<name>', methods=['POST'])
     def api_face_enroll(name: str):
+        if cfg.require_auth and not current_user():
+            return jsonify({'enabled': False, 'ok': False}), 401
         if not face:
             return jsonify({'enabled': False, 'ok': False}), 400
         file = request.files.get('file')
@@ -907,9 +1561,12 @@ def create_app(cfg: AppConfig) -> Flask:
 
     @app.route('/api/face/enroll-from-frame/<name>', methods=['POST'])
     def api_face_enroll_from_frame(name: str):
+        if cfg.require_auth and not current_user():
+            return jsonify({'enabled': False, 'ok': False}), 401
         if not face:
             return jsonify({'enabled': False, 'ok': False}), 400
-        jpg = det.get_jpeg()
+        ensure_detector_started()
+        jpg = det.get_jpeg() if det else None
         if not jpg:
             return jsonify({'error': 'no frame'}), 400
         img_array = np.frombuffer(jpg, np.uint8)
@@ -922,6 +1579,8 @@ def create_app(cfg: AppConfig) -> Flask:
     @app.route('/api/face/trusted', methods=['GET', 'POST', 'DELETE'])
     def api_face_trusted():
         u = current_user()
+        if cfg.require_auth and not u:
+            return jsonify({'error': 'not logged in'}), 401
         if request.method == 'GET':
             return jsonify({'items': trusted_store.list_trusted(u), 'suppress_labels': trusted_store.get_suppress_labels(u)})
         body = request.get_json(silent=True) or {}
@@ -944,6 +1603,8 @@ def create_app(cfg: AppConfig) -> Flask:
     @app.route('/api/face/trusted/suppress-labels', methods=['GET', 'POST'])
     def api_face_trusted_labels():
         u = current_user()
+        if cfg.require_auth and not u:
+            return jsonify({'error': 'not logged in'}), 401
         if request.method == 'GET':
             return jsonify({'suppress_labels': trusted_store.get_suppress_labels(u)})
         body = request.get_json(silent=True) or {}
@@ -962,6 +1623,8 @@ def create_app(cfg: AppConfig) -> Flask:
     @app.route('/api/zones', methods=['GET', 'POST', 'DELETE'])
     def api_zones():
         u = current_user()
+        if cfg.require_auth and not u:
+            return jsonify({'error': 'not logged in'}), 401
         def persist():
             try:
                 zp = zones_path
@@ -1031,9 +1694,116 @@ def create_app(cfg: AppConfig) -> Flask:
             persist()
         return jsonify({'ok': True})
 
-    return app
+    # Performance monitoring endpoints
+    @app.route('/api/performance')
+    def api_performance():
+        if cfg.require_auth and not current_user():
+            return jsonify({'error':'unauthorized'}), 401
+        if not ENHANCED_MODULES_AVAILABLE or perf_mon is None:
+            return jsonify({'error': 'performance module not available'}), 503
+        return jsonify(perf_mon.get_performance_summary())
 
-    # Zones endpoints below (defined after return for readability, but logically placed above). This line won't be reached.
+    @app.route('/api/cache-stats')
+    def api_cache_stats():
+        if cfg.require_auth and not current_user():
+            return jsonify({'error':'unauthorized'}), 401
+        if not ENHANCED_MODULES_AVAILABLE:
+            return jsonify({'error': 'cache module not available'}), 503
+        return jsonify(get_cache_stats())
+
+    # Alert system endpoints
+    @app.route('/api/alerts')
+    def api_alerts():
+        if cfg.require_auth and not current_user():
+            return jsonify({'error': 'unauthorized'}), 401
+        if not ENHANCED_MODULES_AVAILABLE or alert_manager is None:
+            return jsonify({'alerts': []})
+        limit = int(request.args.get('limit', '100'))
+        unack = request.args.get('unack', '0') == '1'
+        # Keep it simple to avoid enum typing issues
+        assert alert_manager is not None
+        items = alert_manager.get_alerts(limit=limit, unacknowledged_only=unack)
+        stats = alert_manager.get_alert_stats()
+        return jsonify({'alerts': items, 'stats': stats})
+
+    @app.route('/api/alerts/test', methods=['POST'])
+    def api_test_alert():
+        u = current_user()
+        if not u:
+            return jsonify({'error': 'unauthorized'}), 401
+        if not ENHANCED_MODULES_AVAILABLE or alert_manager is None:
+            return jsonify({'ok': False, 'error': 'alert module not available'}), 503
+        results = alert_manager.test_notifications()
+        return jsonify({'ok': True, 'results': results})
+
+    @app.route('/api/alerts/acknowledge', methods=['POST'])
+    def api_acknowledge_alert():
+        u = current_user()
+        if not u:
+            return jsonify({'error': 'unauthorized'}), 401
+        if not ENHANCED_MODULES_AVAILABLE or alert_manager is None:
+            return jsonify({'ok': False, 'error': 'alert module not available'}), 503
+        body = request.get_json(silent=True) or {}
+        alert_id = body.get('alert_id')
+        if not alert_id:
+            return jsonify({'error': 'alert_id required'}), 400
+        try:
+            assert alert_manager is not None
+            ok = alert_manager.acknowledge_alert(str(alert_id), acknowledged_by=u)
+        except Exception:
+            ok = False
+        return jsonify({'ok': ok, 'acknowledged': alert_id})
+
+    # Mobile webapp endpoints (placeholder for future enhancement)
+    @app.route('/manifest.json')
+    def app_manifest():
+        manifest = {
+            "name": "Guardia-AI",
+            "short_name": "Guardia",
+            "description": "Real-time AI security monitoring system",
+            "start_url": "/",
+            "display": "standalone",
+            "orientation": "portrait-primary",
+            "theme_color": "#1f2937",
+            "background_color": "#0b0f14",
+            "icons": [
+                {
+                    "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiBmaWxsPSIjMWYyOTM3Ii8+Cjx0ZXh0IHg9Ijk2IiB5PSIxMDAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI2MCIgZmlsbD0iI2VhZWNlZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+boe+4jzwvdGV4dD4KPC9zdmc+",
+                    "sizes": "192x192",
+                    "type": "image/svg+xml",
+                    "purpose": "any maskable"
+                }
+            ]
+        }
+        return jsonify(manifest)
+
+    @app.route('/sw.js')
+    def service_worker():
+        sw_content = '''
+// Basic service worker for Guardia-AI
+const CACHE_NAME = 'guardia-ai-v1';
+const urlsToCache = [
+    '/',
+    '/api/events',
+    '/api/metrics',
+    '/api/system'
+];
+
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
+    );
+});
+
+self.addEventListener('fetch', (event) => {
+    event.respondWith(
+        caches.match(event.request).then((response) => response || fetch(event.request))
+    );
+});
+'''
+        return Response(sw_content, mimetype='application/javascript')
+
+    return app
 
 
 if __name__ == '__main__':

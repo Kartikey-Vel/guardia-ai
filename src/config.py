@@ -13,8 +13,10 @@ class AppConfig:
     source: str | int = 0  # webcam id or path
     frameskip: int = 3
     use_motion_filter: bool = True
-    use_vision: bool = bool(int(os.getenv("GUARDIA_USE_VISION", "0")))
-    use_pose: bool = bool(int(os.getenv("GUARDIA_USE_POSE", "0")))
+    # Multimodal: enable these via env or GUARDIA_ENABLE_MULTIMODAL
+    enable_multimodal: bool = bool(int(os.getenv("GUARDIA_ENABLE_MULTIMODAL", "1")))
+    use_vision: bool = bool(int(os.getenv("GUARDIA_USE_VISION", os.getenv("GUARDIA_ENABLE_MULTIMODAL", "1"))))
+    use_pose: bool = bool(int(os.getenv("GUARDIA_USE_POSE", os.getenv("GUARDIA_ENABLE_MULTIMODAL", "1"))))
     advanced_detection: bool = bool(int(os.getenv("GUARDIA_ADVANCED_DETECTION", "1")))  # prefer Vision for advanced hazards when available
     save_snapshots: bool = False
     snapshot_dir: str = os.path.abspath(os.getenv("GUARDIA_SNAPSHOT_DIR", "snapshots"))
@@ -33,7 +35,10 @@ class AppConfig:
     trusted_people: List[str] = field(default_factory=list)
 
     # YOLO
+    # YOLO primary weights; can be any Ultralytics-compatible weight file
     yolo_weights: str = os.getenv("YOLO_WEIGHTS", "yolov8n.pt")
+    # Optional: additional YOLO weights for advanced/ensemble detection (comma-separated)
+    yolo_extra_weights: List[str] = field(default_factory=lambda: [w for w in map(str.strip, os.getenv("YOLO_EXTRA_WEIGHTS", "").split(',')) if w])
     yolo_conf_thresh: float = 0.25
     yolo_iou_thresh: float = 0.45
     yolo_imgsz: int = int(os.getenv("YOLO_IMGSZ", "640"))
@@ -61,6 +66,9 @@ class AppConfig:
     pose_min_tracking_confidence: float = 0.5
 
     harmful_labels: Set[str] = field(default_factory=lambda: set(map(str.lower, DEFAULT_HARMFUL_LABELS)))
+
+    # Security
+    require_auth: bool = bool(int(os.getenv("GUARDIA_REQUIRE_AUTH", "1")))
 
     def ensure_dirs(self) -> None:
         os.makedirs(self.snapshot_dir, exist_ok=True)
