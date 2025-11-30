@@ -1,0 +1,308 @@
+version: '3.8'
+
+services:
+  # MinIO - Local object storage for clips
+  minio:
+    image: minio/minio:latest
+    container_name: guardia-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: guardia
+      MINIO_ROOT_PASSWORD: guardia-secret-key
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - guardia-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis - Optional cache for deduplication
+  redis:
+    image: redis:7-alpine
+    container_name: guardia-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - guardia-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL - Optional cloud database
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: guardia-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: guardia
+      POSTGRES_USER: guardia
+      POSTGRES_PASSWORD: guardia-db-password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - guardia-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U guardia"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Camera Ingest Service
+  camera-ingest:
+    build:
+      context: ./services/camera-ingest
+      dockerfile: Dockerfile
+    container_name: guardia-camera-ingest
+    ports:
+      - "8001:8001"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./config:/app/config:ro
+      - ./services/camera-ingest/src:/app/src:ro
+    networks:
+      - guardia-net
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Preprocessing Service
+  preprocessing:
+    build:
+      context: ./services/preprocessing
+      dockerfile: Dockerfile
+    container_name: guardia-preprocessing
+    ports:
+      - "8002:8002"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - FACE_BLUR_ENABLED=true
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./services/preprocessing/src:/app/src:ro
+    networks:
+      - guardia-net
+    depends_on:
+      - camera-ingest
+      - redis
+    restart: unless-stopped
+
+  # SkeleGNN Model Service
+  skelegnn:
+    build:
+      context: ./services/models/skelegnn
+      dockerfile: Dockerfile
+    container_name: guardia-skelegnn
+    ports:
+      - "8003:8003"
+    environment:
+      - MODEL_PATH=/app/weights/skelegnn.onnx
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./services/models/skelegnn/src:/app/src:ro
+      - model-weights:/app/weights:ro
+    networks:
+      - guardia-net
+    depends_on:
+      - preprocessing
+    restart: unless-stopped
+    # Uncomment for GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # MotionStream Model Service
+  motionstream:
+    build:
+      context: ./services/models/motionstream
+      dockerfile: Dockerfile
+    container_name: guardia-motionstream
+    ports:
+      - "8004:8004"
+    environment:
+      - MODEL_PATH=/app/weights/motionstream.onnx
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./services/models/motionstream/src:/app/src:ro
+      - model-weights:/app/weights:ro
+    networks:
+      - guardia-net
+    depends_on:
+      - preprocessing
+    restart: unless-stopped
+
+  # MoodTiny Model Service
+  moodtiny:
+    build:
+      context: ./services/models/moodtiny
+      dockerfile: Dockerfile
+    container_name: guardia-moodtiny
+    ports:
+      - "8005:8005"
+    environment:
+      - MODEL_PATH=/app/weights/moodtiny.onnx
+      - LOG_LEVEL=INFO
+      - PRIVACY_MODE=true
+    volumes:
+      - ./services/models/moodtiny/src:/app/src:ro
+      - model-weights:/app/weights:ro
+    networks:
+      - guardia-net
+    depends_on:
+      - preprocessing
+    restart: unless-stopped
+
+  # FusionController - Decision Engine
+  fusion-controller:
+    build:
+      context: ./services/fusion-controller
+      dockerfile: Dockerfile
+    container_name: guardia-fusion-controller
+    ports:
+      - "8006:8006"
+    environment:
+      - DB_PATH=/app/data/guardia.db
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=guardia
+      - MINIO_SECRET_KEY=guardia-secret-key
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./services/fusion-controller/src:/app/src:ro
+      - fusion-data:/app/data
+    networks:
+      - guardia-net
+    depends_on:
+      - skelegnn
+      - motionstream
+      - moodtiny
+      - minio
+    restart: unless-stopped
+
+  # Alerting Service
+  alerts:
+    build:
+      context: ./services/alerts
+      dockerfile: Dockerfile
+    container_name: guardia-alerts
+    ports:
+      - "8007:8007"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - WEBHOOK_ENABLED=false
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./services/alerts/src:/app/src:ro
+    networks:
+      - guardia-net
+    depends_on:
+      - fusion-controller
+      - redis
+    restart: unless-stopped
+
+  # FastAPI Backend (Optional Cloud API)
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    container_name: guardia-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://guardia:guardia-db-password@postgres:5432/guardia
+      - JWT_SECRET=your-jwt-secret-change-in-production
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=guardia
+      - MINIO_SECRET_KEY=guardia-secret-key
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./services/api/src:/app/src:ro
+    networks:
+      - guardia-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Next.js Operator Dashboard
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: guardia-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8007/ws
+    networks:
+      - guardia-net
+    depends_on:
+      - api
+      - alerts
+    restart: unless-stopped
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: guardia-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - guardia-net
+    restart: unless-stopped
+
+  # Grafana - Monitoring Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: guardia-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/docker/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    networks:
+      - guardia-net
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+networks:
+  guardia-net:
+    driver: bridge
+
+volumes:
+  minio-data:
+  redis-data:
+  postgres-data:
+  model-weights:
+  fusion-data:
+  prometheus-data:
+  grafana-data:

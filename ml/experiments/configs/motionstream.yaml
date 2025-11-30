@@ -1,0 +1,75 @@
+# MotionStream Training Configuration
+
+model:
+  name: motionstream
+  type: lite  # 'full' or 'lite'
+  num_frames: 8
+  input_channels: 2  # optical flow u,v
+  hidden_dim: 64
+  lstm_layers: 2
+  dropout: 0.5
+
+dataset:
+  name: avenue
+  root: ../datasets/avenue
+  train_split: train
+  val_split: val
+  num_workers: 4
+  
+  # Video processing
+  frame_size: [224, 224]
+  optical_flow: true
+  
+  # Data augmentation
+  augmentation:
+    random_flip: true
+    random_crop: true
+    crop_size: [224, 224]
+    random_brightness: true
+    brightness_range: [0.8, 1.2]
+
+training:
+  batch_size: 16  # Smaller due to video memory
+  num_epochs: 80
+  
+  optimizer:
+    type: adam
+    lr: 0.0001
+    weight_decay: 0.0001
+  
+  scheduler:
+    type: plateau
+    mode: min
+    patience: 10
+    factor: 0.5
+  
+  loss:
+    type: bce  # Binary cross entropy for anomaly detection
+    pos_weight: 3.0  # Weight for positive (anomaly) class
+  
+  early_stopping:
+    enabled: true
+    patience: 20
+    min_delta: 0.001
+
+validation:
+  batch_size: 32
+  metric: auc  # AUC-ROC for anomaly detection
+  find_optimal_threshold: true
+
+checkpoints:
+  save_dir: ./checkpoints/motionstream
+  save_best: true
+  save_frequency: 10
+
+wandb:
+  enabled: true
+  project: guardia-ai
+  entity: null
+  name: motionstream-lite-v1
+  tags: [motionstream, anomaly-detection, avenue]
+
+# Anomaly detection settings
+anomaly:
+  threshold: 0.7  # Default threshold (will be optimized during validation)
+  min_anomaly_duration: 3  # frames

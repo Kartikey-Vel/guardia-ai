@@ -1,0 +1,77 @@
+# Example camera configuration for Guardia AI
+
+cameras:
+  # Demo camera (disabled by default)
+  - camera_id: cam_demo
+    name: Demo Camera
+    url: rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4
+    username: null
+    password: null
+    fps: 10
+    enabled: false
+    roi:
+      x: 0
+      y: 0
+      width: 1920
+      height: 1080
+
+  # Front Entrance
+  - camera_id: cam_front_entrance
+    name: Front Entrance
+    url: rtsp://192.168.1.100/stream1
+    username: admin
+    password: change_me
+    fps: 10
+    enabled: false
+    roi:
+      x: 0
+      y: 0
+      width: 1920
+      height: 1080
+
+  # Parking Lot
+  - camera_id: cam_parking
+    name: Parking Lot
+    url: rtsp://192.168.1.101/stream1
+    username: admin
+    password: change_me
+    fps: 5
+    enabled: false
+    roi:
+      x: 100
+      y: 50
+      width: 1720
+      height: 980
+
+  # Back Exit
+  - camera_id: cam_back_exit
+    name: Back Exit
+    url: rtsp://192.168.1.102/stream1
+    username: admin
+    password: change_me
+    fps: 10
+    enabled: false
+    roi: null
+
+# Configuration Notes:
+#
+# - camera_id: Unique identifier (alphanumeric + underscore)
+# - name: Human-readable name
+# - url: RTSP stream URL (rtsp://host/path)
+# - username/password: Camera credentials (null if not required)
+# - fps: Target frame rate (affects processing load)
+# - enabled: Set to true to activate camera
+# - roi: Region of Interest (optional)
+#   - Set to null for full frame
+#   - Specify x, y, width, height for crop region
+#
+# ONVIF Support:
+# Most IP cameras support ONVIF standard URLs:
+#   rtsp://camera_ip:554/stream1  (main stream)
+#   rtsp://camera_ip:554/stream2  (sub stream, lower quality)
+#
+# Common RTSP Paths by Brand:
+# - Hikvision: rtsp://ip:554/Streaming/Channels/101
+# - Dahua: rtsp://ip:554/cam/realmonitor?channel=1&subtype=0
+# - Axis: rtsp://ip:554/axis-media/media.amp
+# - Foscam: rtsp://ip:554/videoMain
