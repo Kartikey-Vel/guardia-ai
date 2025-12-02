@@ -1,17 +1,20 @@
 """
 Guardia AI Cloud API Service
-FastAPI backend for event synchronization, model registry, and analytics
+FastAPI backend for event synchronization, model registry, analytics,
+camera management, edge computing, and security fusion
 """
 
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import logging
 import os
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+import httpx
+import asyncio
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 from fastapi.responses import Response
 
 from .database import engine, get_db, Base
@@ -30,6 +33,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from sqlalchemy.orm import selectinload
 
+# Service URLs for internal communication
+CAMERA_MANAGER_URL = os.getenv("CAMERA_MANAGER_URL", "http://camera-manager:8006")
+EDGE_COMPUTE_URL = os.getenv("EDGE_COMPUTE_URL", "http://edge-compute:8007")
+SECURITY_FUSION_URL = os.getenv("SECURITY_FUSION_URL", "http://security-fusion:8008")
+USER_MANAGEMENT_URL = os.getenv("USER_MANAGEMENT_URL", "http://user-management:8010")
+
 # Configure logging
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -40,21 +49,35 @@ logger = logging.getLogger(__name__)
 # Prometheus metrics
 event_counter = Counter('guardia_events_total', 'Total events synced', ['severity'])
 api_request_duration = Histogram('guardia_api_request_duration_seconds', 'API request duration')
+active_cameras = Gauge('guardia_active_cameras', 'Number of active cameras')
+edge_nodes_online = Gauge('guardia_edge_nodes_online', 'Number of online edge nodes')
+security_alerts = Counter('guardia_security_alerts_total', 'Total security alerts', ['alert_type'])
+
+# HTTP client for service communication
+http_client: Optional[httpx.AsyncClient] = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle"""
-    # Startup: create tables
+    global http_client
+    
+    # Startup: create tables and HTTP client
     logger.info("Starting Guardia API service...")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database initialized")
     
+    # Create HTTP client for service communication
+    http_client = httpx.AsyncClient(timeout=30.0)
+    logger.info("HTTP client initialized for service communication")
+    
     yield
     
     # Shutdown
     logger.info("Shutting down Guardia API service...")
+    if http_client:
+        await http_client.aclose()
     await engine.dispose()
 
 
@@ -441,6 +464,525 @@ async def get_analytics(
         "events_by_class": events_by_class,
         "events_by_camera": events_by_camera
     }
+
+
+# ================================
+# Camera Management API (Proxy to camera-manager)
+# ================================
+
+@app.get("/cameras")
+async def list_cameras(current_user: User = Depends(get_current_user)):
+    """List all cameras and their status"""
+    try:
+        response = await http_client.get(f"{CAMERA_MANAGER_URL}/cameras")
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        logger.error(f"Failed to connect to camera manager: {e}")
+        raise HTTPException(status_code=503, detail="Camera manager service unavailable")
+
+
+@app.post("/cameras")
+async def add_camera(
+    camera_config: Dict[str, Any],
+    current_user: User = Depends(get_current_user)
+):
+    """Add a new camera"""
+    if current_user.role not in ["admin", "operator"]:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    
+    try:
+        response = await http_client.post(f"{CAMERA_MANAGER_URL}/cameras", json=camera_config)
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        logger.error(f"Failed to add camera: {e}")
+        raise HTTPException(status_code=503, detail="Camera manager service unavailable")
+
+
+@app.get("/cameras/{camera_id}")
+async def get_camera(
+    camera_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get camera details"""
+    try:
+        response = await http_client.get(f"{CAMERA_MANAGER_URL}/cameras/{camera_id}")
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise HTTPException(status_code=404, detail="Camera not found")
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Camera manager service unavailable")
+
+
+@app.delete("/cameras/{camera_id}")
+async def remove_camera(
+    camera_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Remove a camera"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        response = await http_client.delete(f"{CAMERA_MANAGER_URL}/cameras/{camera_id}")
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Camera manager service unavailable")
+
+
+@app.post("/cameras/{camera_id}/reconnect")
+async def reconnect_camera(
+    camera_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Force reconnect to a camera"""
+    try:
+        response = await http_client.post(f"{CAMERA_MANAGER_URL}/cameras/{camera_id}/reconnect")
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Camera manager service unavailable")
+
+
+@app.get("/cameras/droidcam/discover")
+async def discover_droidcam(current_user: User = Depends(get_current_user)):
+    """Discover DroidCam devices on the network"""
+    try:
+        response = await http_client.get(f"{CAMERA_MANAGER_URL}/droidcam/discover")
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Camera manager service unavailable")
+
+
+# ================================
+# Edge Computing API (Proxy to edge-compute)
+# ================================
+
+@app.get("/edge/nodes")
+async def list_edge_nodes(current_user: User = Depends(get_current_user)):
+    """List all edge computing nodes"""
+    try:
+        response = await http_client.get(f"{EDGE_COMPUTE_URL}/status")
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        logger.error(f"Failed to connect to edge compute service: {e}")
+        raise HTTPException(status_code=503, detail="Edge compute service unavailable")
+
+
+@app.get("/edge/bandwidth")
+async def get_bandwidth_stats(current_user: User = Depends(get_current_user)):
+    """Get bandwidth optimization statistics"""
+    try:
+        response = await http_client.get(f"{EDGE_COMPUTE_URL}/bandwidth")
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Edge compute service unavailable")
+
+
+@app.get("/edge/storage")
+async def get_storage_stats(current_user: User = Depends(get_current_user)):
+    """Get local storage statistics"""
+    try:
+        response = await http_client.get(f"{EDGE_COMPUTE_URL}/storage")
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Edge compute service unavailable")
+
+
+@app.post("/edge/config")
+async def update_edge_config(
+    config: Dict[str, Any],
+    current_user: User = Depends(get_current_user)
+):
+    """Update edge computing configuration"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        response = await http_client.post(f"{EDGE_COMPUTE_URL}/config", json=config)
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Edge compute service unavailable")
+
+
+# ================================
+# Security Fusion API (Proxy to security-fusion)
+# ================================
+
+@app.get("/security/status")
+async def get_security_status(current_user: User = Depends(get_current_user)):
+    """Get overall security system status"""
+    try:
+        response = await http_client.get(f"{SECURITY_FUSION_URL}/status")
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Security fusion service unavailable")
+
+
+@app.get("/security/persons")
+async def list_tracked_persons(current_user: User = Depends(get_current_user)):
+    """List all tracked persons"""
+    try:
+        response = await http_client.get(f"{SECURITY_FUSION_URL}/persons")
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Security fusion service unavailable")
+
+
+@app.post("/security/faces/enroll")
+async def enroll_face(
+    enrollment_data: Dict[str, Any],
+    current_user: User = Depends(get_current_user)
+):
+    """Enroll a new face for recognition"""
+    if current_user.role not in ["admin", "operator"]:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    
+    try:
+        response = await http_client.post(
+            f"{SECURITY_FUSION_URL}/faces/enroll",
+            json=enrollment_data
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Security fusion service unavailable")
+
+
+@app.get("/security/faces")
+async def list_enrolled_faces(current_user: User = Depends(get_current_user)):
+    """List all enrolled faces"""
+    try:
+        response = await http_client.get(f"{SECURITY_FUSION_URL}/faces")
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Security fusion service unavailable")
+
+
+@app.delete("/security/faces/{person_id}")
+async def remove_enrolled_face(
+    person_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Remove an enrolled face"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        response = await http_client.delete(f"{SECURITY_FUSION_URL}/faces/{person_id}")
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Security fusion service unavailable")
+
+
+@app.post("/security/owner-protection")
+async def toggle_owner_protection(
+    enabled: bool,
+    current_user: User = Depends(get_current_user)
+):
+    """Toggle owner protection mode"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        response = await http_client.post(
+            f"{SECURITY_FUSION_URL}/owner-protection",
+            json={"enabled": enabled}
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Security fusion service unavailable")
+
+
+@app.get("/security/anomalies")
+async def get_anomaly_history(
+    hours: int = 24,
+    current_user: User = Depends(get_current_user)
+):
+    """Get anomaly detection history"""
+    try:
+        response = await http_client.get(
+            f"{SECURITY_FUSION_URL}/anomalies",
+            params={"hours": hours}
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="Security fusion service unavailable")
+
+
+# ================================
+# User Management API (Proxy to user-management)
+# ================================
+
+@app.get("/profiles")
+async def list_user_profiles(current_user: User = Depends(get_current_user)):
+    """List all user profiles"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        response = await http_client.get(f"{USER_MANAGEMENT_URL}/users")
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="User management service unavailable")
+
+
+@app.post("/profiles")
+async def create_user_profile(
+    profile_data: Dict[str, Any],
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new user profile"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        response = await http_client.post(f"{USER_MANAGEMENT_URL}/users", json=profile_data)
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="User management service unavailable")
+
+
+@app.get("/profiles/{user_id}")
+async def get_user_profile(
+    user_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get a user profile"""
+    try:
+        response = await http_client.get(f"{USER_MANAGEMENT_URL}/users/{user_id}")
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise HTTPException(status_code=404, detail="Profile not found")
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="User management service unavailable")
+
+
+@app.patch("/profiles/{user_id}")
+async def update_user_profile(
+    user_id: str,
+    profile_data: Dict[str, Any],
+    current_user: User = Depends(get_current_user)
+):
+    """Update a user profile"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        response = await http_client.patch(
+            f"{USER_MANAGEMENT_URL}/users/{user_id}",
+            json=profile_data
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="User management service unavailable")
+
+
+@app.post("/profiles/{user_id}/family")
+async def add_family_member(
+    user_id: str,
+    family_data: Dict[str, Any],
+    current_user: User = Depends(get_current_user)
+):
+    """Add a family member to a profile"""
+    try:
+        response = await http_client.post(
+            f"{USER_MANAGEMENT_URL}/users/{user_id}/family",
+            json=family_data
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="User management service unavailable")
+
+
+@app.get("/profiles/{user_id}/activity")
+async def get_profile_activity(
+    user_id: str,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user)
+):
+    """Get activity logs for a user profile"""
+    try:
+        response = await http_client.get(
+            f"{USER_MANAGEMENT_URL}/users/{user_id}/activity",
+            params={"limit": limit}
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail="User management service unavailable")
+
+
+# ================================
+# System Dashboard API
+# ================================
+
+@app.get("/dashboard/overview")
+async def get_dashboard_overview(current_user: User = Depends(get_current_user)):
+    """Get comprehensive system overview for dashboard"""
+    overview = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "services": {},
+        "cameras": {},
+        "security": {},
+        "edge": {},
+        "recent_events": []
+    }
+    
+    # Check service health
+    services_to_check = [
+        ("camera-manager", CAMERA_MANAGER_URL),
+        ("edge-compute", EDGE_COMPUTE_URL),
+        ("security-fusion", SECURITY_FUSION_URL),
+        ("user-management", USER_MANAGEMENT_URL)
+    ]
+    
+    for service_name, service_url in services_to_check:
+        try:
+            response = await http_client.get(f"{service_url}/health", timeout=5.0)
+            overview["services"][service_name] = {
+                "status": "healthy" if response.status_code == 200 else "unhealthy",
+                "response_time_ms": response.elapsed.total_seconds() * 1000
+            }
+        except Exception as e:
+            overview["services"][service_name] = {
+                "status": "offline",
+                "error": str(e)
+            }
+    
+    # Get camera summary
+    try:
+        response = await http_client.get(f"{CAMERA_MANAGER_URL}/cameras", timeout=5.0)
+        if response.status_code == 200:
+            cameras = response.json()
+            overview["cameras"] = {
+                "total": len(cameras) if isinstance(cameras, list) else cameras.get("total", 0),
+                "active": sum(1 for c in cameras if isinstance(cameras, list) and c.get("status") == "active") if isinstance(cameras, list) else cameras.get("active", 0)
+            }
+    except Exception:
+        overview["cameras"] = {"total": 0, "active": 0, "error": "Service unavailable"}
+    
+    # Get security status
+    try:
+        response = await http_client.get(f"{SECURITY_FUSION_URL}/status", timeout=5.0)
+        if response.status_code == 200:
+            overview["security"] = response.json()
+    except Exception:
+        overview["security"] = {"status": "unavailable"}
+    
+    # Get edge status
+    try:
+        response = await http_client.get(f"{EDGE_COMPUTE_URL}/status", timeout=5.0)
+        if response.status_code == 200:
+            overview["edge"] = response.json()
+    except Exception:
+        overview["edge"] = {"status": "unavailable"}
+    
+    # Get recent events from database
+    db = get_db()
+    async for session in db:
+        query = select(Event).order_by(Event.timestamp.desc()).limit(10)
+        result = await session.execute(query)
+        events = result.scalars().all()
+        overview["recent_events"] = [
+            {
+                "id": e.event_id,
+                "class": e.event_class,
+                "severity": e.severity,
+                "camera_id": e.camera_id,
+                "timestamp": e.timestamp.isoformat() if e.timestamp else None
+            }
+            for e in events
+        ]
+        break
+    
+    return overview
+
+
+@app.get("/dashboard/stats")
+async def get_dashboard_stats(
+    period: str = "24h",
+    current_user: User = Depends(get_current_user)
+):
+    """Get statistics for dashboard charts"""
+    # Parse period
+    if period == "24h":
+        start_date = datetime.utcnow() - timedelta(hours=24)
+    elif period == "7d":
+        start_date = datetime.utcnow() - timedelta(days=7)
+    elif period == "30d":
+        start_date = datetime.utcnow() - timedelta(days=30)
+    else:
+        start_date = datetime.utcnow() - timedelta(hours=24)
+    
+    end_date = datetime.utcnow()
+    
+    db = get_db()
+    async for session in db:
+        # Events timeline (hourly buckets)
+        timeline_query = select(
+            func.date_trunc('hour', Event.timestamp).label('hour'),
+            func.count(Event.id).label('count')
+        ).where(
+            and_(Event.timestamp >= start_date, Event.timestamp <= end_date)
+        ).group_by(func.date_trunc('hour', Event.timestamp)).order_by('hour')
+        
+        timeline_result = await session.execute(timeline_query)
+        timeline = [{"hour": row.hour.isoformat(), "count": row.count} for row in timeline_result]
+        
+        # Severity distribution
+        severity_query = select(
+            Event.severity,
+            func.count(Event.id).label('count')
+        ).where(
+            and_(Event.timestamp >= start_date, Event.timestamp <= end_date)
+        ).group_by(Event.severity)
+        
+        severity_result = await session.execute(severity_query)
+        severity_dist = {row.severity: row.count for row in severity_result}
+        
+        # Top event classes
+        class_query = select(
+            Event.event_class,
+            func.count(Event.id).label('count')
+        ).where(
+            and_(Event.timestamp >= start_date, Event.timestamp <= end_date)
+        ).group_by(Event.event_class).order_by(func.count(Event.id).desc()).limit(10)
+        
+        class_result = await session.execute(class_query)
+        top_classes = [{"class": row.event_class, "count": row.count} for row in class_result]
+        
+        return {
+            "period": period,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "timeline": timeline,
+            "severity_distribution": severity_dist,
+            "top_event_classes": top_classes
+        }
 
 
 if __name__ == "__main__":

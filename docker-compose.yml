@@ -38,7 +38,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # PostgreSQL - Optional cloud database
+  # PostgreSQL - Database for user management and events
   postgres:
     image: timescale/timescaledb:latest-pg15
     container_name: guardia-postgres
@@ -58,7 +58,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # Camera Ingest Service
+  # Camera Ingest Service (Legacy - being replaced by camera-manager)
   camera-ingest:
     build:
       context: ./services/camera-ingest
@@ -74,6 +74,33 @@ services:
       - ./services/camera-ingest/src:/app/src:ro
     networks:
       - guardia-net
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Camera Manager Service - Advanced multi-camera management with DroidCam
+  camera-manager:
+    build:
+      context: ./services/camera-manager
+      dockerfile: Dockerfile
+    container_name: guardia-camera-manager
+    ports:
+      - "8009:8009"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - ZMQ_PUB_PORT=5556
+      - MAX_CAMERAS=3
+      - DROIDCAM_ENABLED=true
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./config:/app/config:ro
+      - ./services/camera-manager/src:/app/src:ro
+    networks:
+      - guardia-net
+    devices:
+      - /dev/video0:/dev/video0  # Built-in webcam access
+    privileged: true  # Required for USB camera access
     depends_on:
       redis:
         condition: service_healthy
@@ -96,7 +123,7 @@ services:
     networks:
       - guardia-net
     depends_on:
-      - camera-ingest
+      - camera-manager
       - redis
     restart: unless-stopped
 
@@ -216,7 +243,84 @@ services:
       - redis
     restart: unless-stopped
 
-  # FastAPI Backend (Optional Cloud API)
+  # Edge Computing Service - Local processing and bandwidth optimization
+  edge-compute:
+    build:
+      context: ./services/edge-compute
+      dockerfile: Dockerfile
+    container_name: guardia-edge-compute
+    ports:
+      - "8010:8010"
+    environment:
+      - ZMQ_SUB_ADDRESS=tcp://camera-manager:5556
+      - ZMQ_PUB_PORT=5557
+      - REDIS_URL=redis://redis:6379
+      - MOTION_THRESHOLD=0.3
+      - JPEG_QUALITY=75
+      - LOCAL_STORAGE_PATH=/app/storage
+      - MAX_STORAGE_GB=50
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./services/edge-compute/src:/app/src:ro
+      - edge-storage:/app/storage
+    networks:
+      - guardia-net
+    depends_on:
+      - camera-manager
+      - redis
+    restart: unless-stopped
+
+  # Security Fusion Service - Facial recognition and anomaly detection
+  security-fusion:
+    build:
+      context: ./services/security-fusion
+      dockerfile: Dockerfile
+    container_name: guardia-security-fusion
+    ports:
+      - "8011:8011"
+    environment:
+      - ZMQ_SUB_ADDRESS=tcp://edge-compute:5557
+      - REDIS_URL=redis://redis:6379
+      - FACE_DB_PATH=/app/data/faces
+      - OWNER_PROTECTION_MODE=true
+      - ANOMALY_THRESHOLD=0.7
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./services/security-fusion/src:/app/src:ro
+      - face-data:/app/data/faces
+      - model-weights:/app/weights:ro
+    networks:
+      - guardia-net
+    depends_on:
+      - edge-compute
+      - redis
+    restart: unless-stopped
+
+  # User Management Service - Profiles, family members, access control
+  user-management:
+    build:
+      context: ./services/user-management
+      dockerfile: Dockerfile
+    container_name: guardia-user-management
+    ports:
+      - "8012:8012"
+    environment:
+      - DATABASE_URL=postgresql://guardia:guardia-db-password@postgres:5432/guardia
+      - SECURITY_FUSION_URL=http://security-fusion:8011
+      - JWT_SECRET=your-jwt-secret-change-in-production
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./services/user-management/src:/app/src:ro
+    networks:
+      - guardia-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      security-fusion:
+        condition: service_started
+    restart: unless-stopped
+
+  # FastAPI Backend (Cloud API Gateway)
   api:
     build:
       context: ./services/api
@@ -230,7 +334,12 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=guardia
       - MINIO_SECRET_KEY=guardia-secret-key
+      - CAMERA_MANAGER_URL=http://camera-manager:8009
+      - EDGE_COMPUTE_URL=http://edge-compute:8010
+      - SECURITY_FUSION_URL=http://security-fusion:8011
+      - USER_MANAGEMENT_URL=http://user-management:8012
       - LOG_LEVEL=INFO
+      - CORS_ORIGINS=http://localhost:3000,http://web:3000
     volumes:
       - ./services/api/src:/app/src:ro
     networks:
@@ -240,6 +349,14 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      camera-manager:
+        condition: service_started
+      edge-compute:
+        condition: service_started
+      security-fusion:
+        condition: service_started
+      user-management:
+        condition: service_started
     restart: unless-stopped
 
   # Next.js Operator Dashboard
@@ -306,3 +423,5 @@ volumes:
   fusion-data:
   prometheus-data:
   grafana-data:
+  edge-storage:
+  face-data:
