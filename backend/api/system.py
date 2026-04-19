@@ -19,6 +19,8 @@ router = APIRouter()
 def system_status(db: Session = Depends(get_db)):
     """Return a health summary for the Guardia AI backend."""
     cfg = get_settings()
+    from ai.yolo_detector import yolo_detector
+
     total_events = db.query(Event).count()
     total_cameras = db.query(Camera).count()
 
@@ -29,9 +31,38 @@ def system_status(db: Session = Depends(get_db)):
         "analysis_interval_frames": cfg.analysis_interval_frames,
         "gemini_configured": bool(cfg.gemini_api_key),
         "groq_configured": bool(cfg.groq_api_key),
+        "yolo_enabled": bool(cfg.yolo_enabled),
+        "yolo_ready": yolo_detector.is_ready,
+        "yolo_model": cfg.yolo_model,
         "websocket_clients": manager.connection_count,
         "total_events_logged": total_events,
         "total_cameras_registered": total_cameras,
+    }
+
+@router.get("/models/status")
+def models_status():
+    """Return detailed connectivity and readiness status for all AI models."""
+    cfg = get_settings()
+    from ai.yolo_detector import yolo_detector
+
+    return {
+        "yolo": {
+            "enabled": cfg.yolo_enabled,
+            "ready": yolo_detector.is_ready,
+            "model_name": cfg.yolo_model,
+        },
+        "gemini": {
+            "configured": bool(cfg.gemini_api_key),
+            "model_name": cfg.gemini_model,
+        },
+        "groq": {
+            "configured": bool(cfg.groq_api_key),
+            "model_name": cfg.groq_model,
+        },
+        "ollama": {
+            # Ollama is implicitly the fallback when Groq fails, but we can track if it's set as primary if we wanted
+            "fallback_enabled": True
+        }
     }
 
 

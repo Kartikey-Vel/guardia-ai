@@ -264,11 +264,11 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 
 #### 👨‍💻 Kartikey Mishra
 ```
-[ ] TASK-031: YOLOv5/v8 integration via ultralytics
-[ ] TASK-032: Frame annotation (bounding boxes overlay)
-[ ] TASK-033: Confidence scoring system
-[ ] TASK-034: API routes for model status
-[ ] TASK-035: Test Groq + Gemini together
+[x] TASK-031: YOLOv5/v8 integration via ultralytics
+[x] TASK-032: Frame annotation (bounding boxes overlay)
+[x] TASK-033: Confidence scoring system
+[x] TASK-034: API routes for model status
+[x] TASK-035: Test Groq + Gemini together
 ```
 
 #### 👨‍💻 Ayushman Dwivedi
