@@ -1,37 +1,86 @@
 "use client";
 
-import { Button } from "@heroui/react";
-import { ShieldAlert, Bell, Menu } from "lucide-react";
+import { Button, Badge, Avatar } from "@heroui/react";
+import { Menu, Bell, Search, PanelLeftOpen } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
+import { usePathname } from "next/navigation";
 
 interface NavbarProps {
   onMenuClick: () => void;
+  isCollapsed: boolean;
+  onCollapse: () => void;
 }
 
-export function Navbar({ onMenuClick }: NavbarProps) {
+export function Navbar({ onMenuClick, isCollapsed, onCollapse }: NavbarProps) {
+  const pathname = usePathname();
+  
+  // Very simple breadcrumb logic
+  const getPageTitle = () => {
+    if (pathname === "/") return "Dashboard Overview";
+    if (pathname.includes("/live-feeds")) return "Live Camera Feeds";
+    if (pathname.includes("/alerts")) return "Alerts & Incidents";
+    if (pathname.includes("/analytics")) return "System Analytics";
+    if (pathname.includes("/settings")) return "Configuration Settings";
+    return "Dashboard";
+  };
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-divider bg-background/70 backdrop-blur-lg">
-      <div className="flex h-16 items-center px-4 md:px-6 w-full justify-between">
-        <div className="flex items-center gap-2 md:gap-4 justify-start">
+    <header className="sticky top-0 z-30 w-full h-16 border-b border-divider/50 bg-background/50 backdrop-blur-xl shrink-0">
+      <div className="flex h-full items-center px-4 md:px-6 w-full justify-between">
+        
+        {/* Left section */}
+        <div className="flex items-center gap-4 justify-start">
           <Button
             isIconOnly
             variant="tertiary"
-            className="md:hidden"
+            className="md:hidden text-default-600"
             onClick={onMenuClick}
+            size="sm"
           >
             <Menu size={20} />
           </Button>
-          <div className="flex items-center gap-2 shrink-0">
-            <ShieldAlert className="text-primary hidden sm:block" size={24} />
-            <p className="font-bold text-lg tracking-tight">GUARDIA AI</p>
+          
+          {isCollapsed && (
+            <Button 
+              isIconOnly 
+              variant="tertiary" 
+              className="hidden md:flex text-default-500 hover:text-foreground" 
+              onClick={onCollapse}
+              size="sm"
+            >
+              <PanelLeftOpen size={18} />
+            </Button>
+          )}
+
+          <div className="flex flex-col hidden sm:flex">
+            <h1 className="font-outfit font-semibold text-lg tracking-tight leading-tight">{getPageTitle()}</h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 justify-end">
-          <Button isIconOnly variant="tertiary" aria-label="Notifications">
-            <Bell size={20} />
+        {/* Right section */}
+        <div className="flex items-center gap-2 sm:gap-4 justify-end">
+          <Button isIconOnly variant="tertiary" aria-label="Search" className="text-default-500">
+            <Search size={18} />
           </Button>
+          
+          <Badge.Anchor>
+            <Button isIconOnly variant="tertiary" aria-label="Notifications" className="text-default-500">
+              <Bell size={18} />
+            </Button>
+            <Badge color="danger" placement="top-right">3</Badge>
+          </Badge.Anchor>
+          
+          <div className="w-px h-6 bg-divider mx-1" />
+          
           <ThemeToggle />
+          
+          <Avatar size="sm" className="cursor-pointer ml-1 ring-2 ring-primary/20">
+            <Avatar.Image 
+              src="https://i.pravatar.cc/150?u=a042581f4e29026704d" 
+              alt="User" 
+            />
+            <Avatar.Fallback>JD</Avatar.Fallback>
+          </Avatar>
         </div>
       </div>
     </header>
