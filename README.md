@@ -8,7 +8,7 @@
   <a href="#quick-start"><img src="https://img.shields.io/badge/Quick%20Start-5%20Minutes-0ea5e9?style=for-the-badge" alt="Quick Start" /></a>
   <a href="#system-architecture"><img src="https://img.shields.io/badge/Architecture-Multimodal-16a34a?style=for-the-badge" alt="Architecture" /></a>
   <a href="#api-highlights"><img src="https://img.shields.io/badge/API-FastAPI-f97316?style=for-the-badge" alt="API" /></a>
-  <a href="#demo-gallery"><img src="https://img.shields.io/badge/Demo-GIF%20Gallery-ef4444?style=for-the-badge" alt="Demo Gallery" /></a>
+  <a href="#architecture-and-flow-suite"><img src="https://img.shields.io/badge/Flows-Architecture%20Suite-ef4444?style=for-the-badge" alt="Architecture Suite" /></a>
 </p>
 
 <p align="center">
@@ -89,20 +89,6 @@ The goal is to help operators detect and prioritize incidents faster by generati
 
 ---
 
-## Demo Gallery
-Use these blocks as your presentation section. You can keep these GIFs or replace them with your own recordings from the app.
-
-### 1) Live Monitoring Experience
-![Live Monitoring Demo](https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2R5YWQ0cXcwN2w0cWxhM2h4bjN2eTlybWQ2dTBvY2Rza3J4N2N0byZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3o7aD2saalBwwftBIY/giphy.gif)
-
-### 2) Alert Stream Behavior
-![Alert Stream Demo](https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaG1iMWx2dm9ub3Rna2Q3eTdzZnBjbTR3c2N4bzYwOHhlOWxqMWN2YiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/l0HlNaQ6gWfllcjDO/giphy.gif)
-
-### 3) Analytics and Incident Review
-![Analytics Demo](https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2MxZjNucnhnbjI1aWhvM3YzN3Y5dGJ4cnQ4d3RwdHN2MGI3Z29sYiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/xT9IgzoKnwFNmISR8I/giphy.gif)
-
----
-
 ## System Architecture
 ```mermaid
 flowchart LR
@@ -116,6 +102,108 @@ flowchart LR
     G --> H[(SQLite)]
     G --> I[WebSocket Alerts]
     I --> J[Next.js Dashboard]
+```
+
+---
+
+## Architecture and Flow Suite
+
+### 1) High-Level Context Diagram
+```mermaid
+flowchart TB
+    U[Security Operator] --> F[Guardia Dashboard]
+    C1[Webcam / RTSP] --> B[Backend Processing Node]
+    M1[Mic / Audio Input] --> B
+    B --> A1[AI Services\nGemini • Groq • Local Fallback]
+    B --> DB[(SQLite Event Store)]
+    B --> WS[WebSocket Alert Channel]
+    WS --> F
+    B --> API[REST API]
+    API --> F
+```
+
+### 2) Runtime Processing Flow
+```mermaid
+flowchart LR
+    F0[Capture Frame] --> F1[Motion Analysis]
+    F1 --> F2{Analyze Now?}
+    F2 -->|No| F6[Update Status Stream]
+    F2 -->|Yes| F3[Vision AI Inference]
+    F3 --> F4[Fusion Controller]
+    F4 --> F5{Severity >= Threshold}
+    F5 -->|Yes| F7[Persist Event]
+    F7 --> F8[Broadcast Alert]
+    F5 -->|No| F6
+    F8 --> F6
+    F6 --> F9[Dashboard Refresh]
+```
+
+### 3) Alert Lifecycle Sequence
+```mermaid
+sequenceDiagram
+    participant Cam as Camera
+    participant Pipe as AI Pipeline
+    participant Fuse as Fusion Controller
+    participant API as FastAPI
+    participant DB as SQLite
+    participant WS as WebSocket Manager
+    participant UI as Dashboard
+
+    Cam->>Pipe: Stream frame
+    Pipe->>Pipe: Motion detection
+    Pipe->>Fuse: Vision + Motion + Context
+    Fuse-->>Pipe: Final classification + severity
+    Pipe->>API: Create event payload
+    API->>DB: Insert event record
+    API->>WS: Publish ALERT
+    WS-->>UI: Push real-time alert
+    UI->>API: Fetch summary/trends
+    API-->>UI: Updated analytics
+```
+
+### 4) Deployment Topology
+```mermaid
+flowchart LR
+    subgraph Client
+      B1[Browser]
+    end
+
+    subgraph AppLayer
+      FE[Next.js Frontend]
+      BE[FastAPI Backend]
+      WSS[WebSocket Endpoint]
+    end
+
+    subgraph DataLayer
+      SQL[(SQLite)]
+    end
+
+    subgraph AIProviders
+      G1[Gemini Vision]
+      G2[Groq LLM]
+      G3[Local/Ollama Fallback]
+    end
+
+    B1 --> FE
+    FE --> BE
+    FE --> WSS
+    BE --> SQL
+    BE --> G1
+    BE --> G2
+    BE --> G3
+```
+
+### 5) Data Model Relationship View
+```mermaid
+flowchart TB
+    CAM[Cameras]
+    EVT[Events]
+    SET[Settings]
+
+    CAM -->|camera_id| EVT
+    EVT -->|classification, severity, confidence| EVT
+    SET -->|alert_threshold, analysis_interval| EVT
+    EVT -->|timestamped analytics| RPT[Summary and Trends]
 ```
 
 ---

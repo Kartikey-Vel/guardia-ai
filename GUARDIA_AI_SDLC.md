@@ -208,8 +208,8 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 
 #### 🧑‍💼 Aryan Bajpai
 ```
-[ ] TASK-001: Initialize GitHub repo + project structure
-[ ] TASK-002: Write requirements.txt + package.json
+[x] TASK-001: Initialize GitHub repo + project structure
+[x] TASK-002: Write requirements.txt + package.json
 [ ] TASK-003: Implement OpenCV motion detection module
 [ ] TASK-004: Integrate Gemini Vision API for frame analysis
 [ ] TASK-005: Daily standup facilitation (15 min)
@@ -217,7 +217,7 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 
 #### 👩‍💻 Omisha Singh
 ```
-[ ] TASK-006: npx create-next-app guardia-ai-frontend
+[x] TASK-006: npx create-next-app guardia-ai-frontend
 [ ] TASK-007: Install HeroUI + Tailwind setup
 [ ] TASK-008: Create app layout (sidebar, topnav, main)
 [ ] TASK-009: Build Dashboard page skeleton
@@ -235,7 +235,7 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 
 #### 👨‍💻 Ayushman Dwivedi
 ```
-[ ] TASK-016: FastAPI project setup + folder structure
+[x] TASK-016: FastAPI project setup + folder structure
 [ ] TASK-017: SQLite database + SQLAlchemy models
 [ ] TASK-018: CRUD API for events (/api/v1/events)
 [ ] TASK-019: WebSocket server setup
@@ -276,7 +276,7 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 [ ] TASK-036: Alert broadcasting via WebSocket
 [ ] TASK-037: Background task runner (FastAPI BackgroundTasks)
 [ ] TASK-038: CORS setup for frontend
-[ ] TASK-039: Environment variables + .env template
+[x] TASK-039: Environment variables + .env template
 [ ] TASK-040: Basic Docker Compose file
 ```
 
@@ -339,7 +339,7 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 [ ] TASK-061: End-to-end integration testing
 [ ] TASK-062: Performance benchmarking
 [ ] TASK-063: Create demo video/screenshots
-[ ] TASK-064: Final README.md
+[x] TASK-064: Final README.md
 [ ] TASK-065: Project presentation prep
 ```
 
@@ -377,7 +377,7 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 - [ ] WebSocket real-time alerts working
 - [ ] Analytics charts showing data
 - [ ] < 500ms detection latency
-- [ ] README complete
+- [x] README complete
 - [ ] Demo ready
 
 ---

@@ -20,20 +20,20 @@ cd guardia-ai
 ## 3) Create Virtual Environment
 ### Windows (PowerShell)
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+python -m venv backend/.venv
+.\backend\.venv\Scripts\Activate.ps1
 ```
 
 If execution policy blocks activation:
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\.venv\Scripts\Activate.ps1
+.\backend\.venv\Scripts\Activate.ps1
 ```
 
 ### Linux / Ubuntu / macOS
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv backend/.venv
+source backend/.venv/bin/activate
 ```
 
 ## 4) Install Backend Dependencies
@@ -69,6 +69,18 @@ Update at least:
 ```bash
 python -m pip --version
 python -c "import fastapi, sqlalchemy, cv2, numpy; print('backend deps ok')"
+```
+
+Direct check without activation:
+
+### Windows (PowerShell)
+```powershell
+.\backend\.venv\Scripts\python.exe -c "import fastapi, sqlalchemy, cv2, ultralytics, torch, google.generativeai, groq; print('backend deps ok')"
+```
+
+### Linux / Ubuntu / macOS
+```bash
+./backend/.venv/bin/python -c "import fastapi, sqlalchemy, cv2, ultralytics, torch, google.generativeai, groq; print('backend deps ok')"
 ```
 
 ## 7) Backend Scaffold Structure
@@ -109,11 +121,11 @@ pip install -r backend/requirements.txt
 ### Using a different Python executable
 Windows:
 ```powershell
-py -3.11 -m venv .venv
+py -3.11 -m venv backend/.venv
 ```
 Linux/macOS:
 ```bash
-python3.11 -m venv .venv
+python3.11 -m venv backend/.venv
 ```
 
 ## 10) Next Step for Developers
