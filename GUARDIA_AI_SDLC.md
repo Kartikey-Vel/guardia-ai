@@ -37,16 +37,16 @@ Guardia AI is a next-generation, multimodal AI surveillance MVP that transforms 
 ## 1.3 MVP Scope (2-Day Build)
 
 ### ✅ IN SCOPE (Must Have)
-- [ ] Live webcam/RTSP video stream ingestion
-- [ ] Real-time motion anomaly detection (YOLOv5 via Groq Vision API)
-- [ ] AI-powered threat analysis (Gemini Flash free tier)
-- [ ] Alert generation with severity scoring (1-10)
+- [x] Live webcam/RTSP video stream ingestion
+- [x] Real-time motion anomaly detection (YOLOv5 via Groq Vision API)
+- [x] AI-powered threat analysis (Gemini Flash free tier)
+- [x] Alert generation with severity scoring (1-10)
 - [ ] Real-time dashboard with Next.js + HeroUI
-- [ ] WebSocket live alerts feed
-- [ ] Event logging to SQLite
-- [ ] REST API (FastAPI)
-- [ ] Audio anomaly detection (browser Web Audio API)
-- [ ] FusionController (rule-based + Groq LLM decision)
+- [x] WebSocket live alerts feed
+- [x] Event logging to SQLite
+- [x] REST API (FastAPI)
+- [x] Audio anomaly detection (browser Web Audio API)
+- [x] FusionController (rule-based + Groq LLM decision)
 
 ### ❌ OUT OF SCOPE (Future)
 - Federated learning
@@ -210,9 +210,9 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 ```
 [x] TASK-001: Initialize GitHub repo + project structure
 [x] TASK-002: Write requirements.txt + package.json
-[ ] TASK-003: Implement OpenCV motion detection module
-[ ] TASK-004: Integrate Gemini Vision API for frame analysis
-[ ] TASK-005: Daily standup facilitation (15 min)
+[x] TASK-003: Implement OpenCV motion detection module
+[x] TASK-004: Integrate Gemini Vision API for frame analysis
+[x] TASK-005: Daily standup facilitation (15 min)
 ```
 
 #### 👩‍💻 Omisha Singh
@@ -226,31 +226,31 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 
 #### 👨‍💻 Kartikey Mishra
 ```
-[ ] TASK-011: Set up Groq API + test connection
-[ ] TASK-012: Set up Ollama locally (pull llama3)
-[ ] TASK-013: Write FusionController class (rule-based layer)
-[ ] TASK-014: Write FusionController class (Groq LLM layer)
-[ ] TASK-015: Write audio anomaly detection module
+[x] TASK-011: Set up Groq API + test connection
+[x] TASK-012: Set up Ollama locally (pull llama3)
+[x] TASK-013: Write FusionController class (rule-based layer)
+[x] TASK-014: Write FusionController class (Groq LLM layer)
+[x] TASK-015: Write audio anomaly detection module
 ```
 
 #### 👨‍💻 Ayushman Dwivedi
 ```
 [x] TASK-016: FastAPI project setup + folder structure
-[ ] TASK-017: SQLite database + SQLAlchemy models
-[ ] TASK-018: CRUD API for events (/api/v1/events)
-[ ] TASK-019: WebSocket server setup
-[ ] TASK-020: Camera management API
+[x] TASK-017: SQLite database + SQLAlchemy models
+[x] TASK-018: CRUD API for events (/api/v1/events)
+[x] TASK-019: WebSocket server setup
+[x] TASK-020: Camera management API
 ```
 
 ### Afternoon Block (2 PM – 7 PM)
 
 #### 🧑‍💼 Aryan Bajpai
 ```
-[ ] TASK-021: Pipeline orchestration main.py
+[x] TASK-021: Pipeline orchestration main.py
 [ ] TASK-022: Video stream processor (RTSP + webcam)
-[ ] TASK-023: Integrate all AI models into pipeline
-[ ] TASK-024: Alert generation module
-[ ] TASK-025: Test full backend pipeline end-to-end
+[x] TASK-023: Integrate all AI models into pipeline
+[x] TASK-024: Alert generation module
+[x] TASK-025: Test full backend pipeline end-to-end
 ```
 
 #### 👩‍💻 Omisha Singh
@@ -273,19 +273,19 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 
 #### 👨‍💻 Ayushman Dwivedi
 ```
-[ ] TASK-036: Alert broadcasting via WebSocket
+[x] TASK-036: Alert broadcasting via WebSocket
 [ ] TASK-037: Background task runner (FastAPI BackgroundTasks)
-[ ] TASK-038: CORS setup for frontend
+[x] TASK-038: CORS setup for frontend
 [x] TASK-039: Environment variables + .env template
 [ ] TASK-040: Basic Docker Compose file
 ```
 
 ### End of Day 1 Checkpoint ✅
-- [ ] Backend API running on localhost:8000
-- [ ] WebSocket broadcasting test alerts
+- [x] Backend API running on localhost:8000
+- [x] WebSocket broadcasting test alerts
 - [ ] Frontend showing live dashboard skeleton
-- [ ] At least 1 AI model returning results
-- [ ] Database storing events
+- [x] At least 1 AI model returning results
+- [x] Database storing events
 
 ---
 
