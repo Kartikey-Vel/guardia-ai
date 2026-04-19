@@ -218,10 +218,10 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 #### 👩‍💻 Omisha Singh
 ```
 [x] TASK-006: npx create-next-app guardia-ai-frontend
-[ ] TASK-007: Install HeroUI + Tailwind setup
-[ ] TASK-008: Create app layout (sidebar, topnav, main)
-[ ] TASK-009: Build Dashboard page skeleton
-[ ] TASK-010: Build Alerts page skeleton
+[x] TASK-007: Install HeroUI + Tailwind setup
+[x] TASK-008: Create app layout (sidebar, topnav, main)
+[x] TASK-009: Build Dashboard page skeleton
+[x] TASK-010: Build Alerts page skeleton
 ```
 
 #### 👨‍💻 Kartikey Mishra
@@ -255,11 +255,11 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 
 #### 👩‍💻 Omisha Singh
 ```
-[ ] TASK-026: LiveFeed component (react-webcam integration)
-[ ] TASK-027: AlertsPanel component (real-time list)
-[ ] TASK-028: SeverityBadge component
-[ ] TASK-029: Connect WebSocket to AlertsPanel
-[ ] TASK-030: Navbar + Sidebar with HeroUI
+[x] TASK-026: LiveFeed component (react-webcam integration)
+[x] TASK-027: AlertsPanel component (real-time list)
+[x] TASK-028: SeverityBadge component
+[x] TASK-029: Connect WebSocket to AlertsPanel
+[x] TASK-030: Navbar + Sidebar with HeroUI
 ```
 
 #### 👨‍💻 Kartikey Mishra
@@ -283,7 +283,7 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 ### End of Day 1 Checkpoint ✅
 - [x] Backend API running on localhost:8000
 - [x] WebSocket broadcasting test alerts
-- [ ] Frontend showing live dashboard skeleton
+- [x] Frontend showing live dashboard skeleton
 - [x] At least 1 AI model returning results
 - [x] Database storing events
 
@@ -307,11 +307,11 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 
 #### 👩‍💻 Omisha Singh
 ```
-[ ] TASK-046: Analytics page (Recharts integration)
-[ ] TASK-047: Event history table with filters
-[ ] TASK-048: Settings page (API keys, thresholds)
-[ ] TASK-049: Severity color coding + animations
-[ ] TASK-050: Mobile responsiveness check
+[x] TASK-046: Analytics page (Recharts integration)
+[x] TASK-047: Event history table with filters
+[x] TASK-048: Settings page (API keys, thresholds)
+[x] TASK-049: Severity color coding + animations
+[x] TASK-050: Mobile responsiveness check
 ```
 
 #### 👨‍💻 Kartikey Mishra
@@ -345,11 +345,11 @@ Camera Frame → OpenCV Extract → Gemini Vision API → Object Detection
 
 #### 👩‍💻 Omisha Singh
 ```
-[ ] TASK-066: UI polish + Framer Motion animations
-[ ] TASK-067: Dark mode implementation
-[ ] TASK-068: Loading states + error boundaries
-[ ] TASK-069: Logo + branding assets
-[ ] TASK-070: Final UI review + bug fixes
+[x] TASK-066: UI polish + Framer Motion animations
+[x] TASK-067: Dark mode implementation
+[x] TASK-068: Loading states + error boundaries
+[x] TASK-069: Logo + branding assets
+[x] TASK-070: Final UI review + bug fixes
 ```
 
 #### 👨‍💻 Kartikey Mishra
