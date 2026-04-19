@@ -24,6 +24,7 @@ from ai.gemini_vision import gemini_analyzer
 from ai.groq_fusion import groq_fusion
 from ai.motion_detector import motion_detector
 from ai.yolo_detector import yolo_detector
+from ai.audio_detector import audio_detector
 from config import get_settings
 from models.schemas import EventCreate, FusionResult, MotionResult, VisionResult, YOLOResult
 
@@ -94,11 +95,21 @@ class AIFramePipeline:
             motion_score=motion.motion_score,
         )
 
-        # --- Step 4: Fusion ---
+        # --- Step 4: Audio anomaly detection (Simulation for Demo) ---
+        # In a real setup, this would use a persistent audio stream.
+        # Here we simulate an audio check if motion is significantly high.
+        audio_result = None
+        if motion.motion_score > 0.1:
+            # We "listen" for a second of synthetic audio data
+            dummy_audio = b"\x00" * 32000  # 1s of 16kHz mono (empty but demonstrates logic)
+            audio_result = audio_detector.analyze_audio(dummy_audio)
+
+        # --- Step 5: Fusion ---
         result: FusionResult = groq_fusion.fuse(
             motion,
             vision,
             yolo=yolo,
+            audio=audio_result,
             zone=zone,
             risk_level=risk_level,
             camera_id=camera_id,
@@ -139,10 +150,16 @@ class AIFramePipeline:
             camera_id=camera_id,
             motion_score=motion_result.motion_score,
         )
+        
+        # Audio check (Simulated)
+        dummy_audio = b"\x00" * 32000
+        audio_result = audio_detector.analyze_audio(dummy_audio)
+
         fusion = groq_fusion.fuse(
             motion_result,
             vision,
             yolo=yolo,
+            audio=audio_result,
             zone=zone,
             risk_level=risk_level,
             camera_id=camera_id,

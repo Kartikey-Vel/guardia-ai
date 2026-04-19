@@ -32,6 +32,7 @@ from PIL import Image
 
 from config import get_settings
 from models.schemas import VisionResult
+from ai.utils import KeyRotator
 
 logger = logging.getLogger(__name__)
 
@@ -82,36 +83,33 @@ class GeminiVisionAnalyzer:
 
     def __init__(self) -> None:
         self._cfg = get_settings()
+        self._rotator = KeyRotator(self._cfg.gemini_api_keys)
         self._model = None
         self._initialized = False
         self._init_client()
 
-    # ------------------------------------------------------------------
-    # Initialisation
-    # ------------------------------------------------------------------
-
     def _init_client(self) -> None:
-        """Configure the Gemini client.  Gracefully handles missing key."""
-        if not self._cfg.gemini_api_key:
-            logger.warning(
-                "GEMINI_API_KEY not set — Gemini vision will use rule-based fallback."
-            )
+        """Configure the Gemini client. Gracefully handles missing keys and supports rotation."""
+        api_key = self._rotator.current_key
+        if not api_key:
+            logger.warning("No Gemini API keys available — Gemini vision will use rule-based fallback.")
             return
+
         try:
-            # Use the current google-genai SDK (google.generativeai is deprecated)
+            # Use the current google-genai SDK
             try:
                 import google.genai as genai  # type: ignore
                 from google.genai import types as genai_types  # type: ignore
                 self._sdk = "new"
             except ImportError:
-                import google.generativeai as genai  # type: ignore  # legacy fallback
+                import google.generativeai as genai  # type: ignore
                 self._sdk = "legacy"
 
             if self._sdk == "new":
-                self._client = genai.Client(api_key=self._cfg.gemini_api_key)
+                self._client = genai.Client(api_key=api_key)
                 self._model_name = self._cfg.gemini_model
             else:
-                genai.configure(api_key=self._cfg.gemini_api_key)
+                genai.configure(api_key=api_key)
                 self._model = genai.GenerativeModel(
                     model_name=self._cfg.gemini_model,
                     generation_config={
@@ -148,7 +146,7 @@ class GeminiVisionAnalyzer:
 
         Falls back to rule-based scoring if Gemini is unavailable.
         """
-        if not self._initialized or self._model is None:
+        if not self._initialized:
             return self._rule_based_fallback(motion_score, reason="no_api_key")
 
         pil_image = self._bgr_to_pil(frame)
@@ -158,6 +156,17 @@ class GeminiVisionAnalyzer:
         try:
             return self._call_gemini(pil_image, camera_id, motion_score)
         except Exception as exc:
+            # TASK-052: API Key rotation on quota hit
+            err_msg = str(exc).lower()
+            if "429" in err_msg or "quota" in err_msg or "rate limit" in err_msg:
+                logger.warning("Gemini quota reached. Attempting key rotation...")
+                if self._rotator.rotate():
+                    self._init_client()
+                    try:
+                        return self._call_gemini(pil_image, camera_id, motion_score)
+                    except Exception as retry_exc:
+                        logger.error("Retry with rotated Gemini key failed: %s", retry_exc)
+
             logger.error("Gemini API call failed [cam=%s]: %s", camera_id, exc)
             return self._rule_based_fallback(motion_score, reason=str(exc)[:80])
 

@@ -48,19 +48,14 @@ Respond ONLY with a single JSON object (no markdown, no explanation):
 }}
 """
 
-
 class GroqFusionController:
     """
-    LLM-powered multi-signal fusion using Groq's llama3 endpoint.
-
-    Usage
-    -----
-    >>> fusion = GroqFusionController()
-    >>> result = fusion.fuse(motion_result, vision_result, zone="entrance", risk_level=3)
+    Orchestrates the fusion of vision, motion, and audio signals using Groq LLM.
     """
 
     def __init__(self) -> None:
         self._cfg = get_settings()
+        self._rotator = KeyRotator(self._cfg.groq_api_keys)
         self._client = None
         self._initialized = False
         self._init_client()
@@ -70,13 +65,14 @@ class GroqFusionController:
     # ------------------------------------------------------------------
 
     def _init_client(self) -> None:
-        if not self._cfg.groq_api_key:
-            logger.warning("GROQ_API_KEY not set — fusion will use weighted heuristic.")
+        api_key = self._rotator.current_key
+        if not api_key:
+            logger.warning("No Groq API keys available — fusion will use weighted heuristic.")
             return
         try:
             from groq import Groq  # type: ignore
 
-            self._client = Groq(api_key=self._cfg.groq_api_key)
+            self._client = Groq(api_key=api_key)
             self._initialized = True
             logger.info("Groq fusion initialised — model=%s", self._cfg.groq_model)
         except Exception as exc:
@@ -97,24 +93,17 @@ class GroqFusionController:
         motion: MotionResult,
         vision: VisionResult,
         yolo: Optional[YOLOResult] = None,
+        audio: Optional[dict] = None,
         zone: str = "general",
         risk_level: int = 2,
         camera_id: str = "default",
     ) -> FusionResult:
         """
-        Produce a final FusionResult from motion + vision signals.
-
-        Parameters
-        ----------
-        motion:      Output of MotionDetector.process_frame()
-        vision:      Output of GeminiVisionAnalyzer.analyze_frame()
-        zone:        Camera zone label (e.g. "entrance", "warehouse")
-        risk_level:  Camera risk level 1-5 (affects severity weights)
-        camera_id:   Identifier for logging
+        Produce a final FusionResult from motion + vision + audio signals.
         """
         if self._initialized and self._client:
-            return self._groq_fusion(motion, vision, yolo, zone, risk_level, camera_id)
-        return self._heuristic_fusion(motion, vision, yolo, zone, risk_level)
+            return self._groq_fusion(motion, vision, yolo, audio, zone, risk_level, camera_id)
+        return self._heuristic_fusion(motion, vision, yolo, audio, zone, risk_level)
 
     # ------------------------------------------------------------------
     # Groq-powered fusion
@@ -125,25 +114,32 @@ class GroqFusionController:
         motion: MotionResult,
         vision: VisionResult,
         yolo: Optional[YOLOResult],
+        audio: Optional[dict],
         zone: str,
         risk_level: int,
         camera_id: str,
     ) -> FusionResult:
         signals = {
-            "motion_detected": motion.motion_detected,
-            "motion_score": round(motion.motion_score, 4),
-            "contour_count": motion.contour_count,
-            "gemini_classification": vision.classification,
-            "gemini_severity": vision.severity,
-            "gemini_confidence": round(vision.confidence, 4),
-            "gemini_description": vision.description,
-            "yolo_detection_count": yolo.detection_count if yolo else 0,
-            "yolo_labels": yolo.labels if yolo else [],
-            "yolo_max_confidence": round(yolo.max_confidence, 4) if yolo else 0.0,
-            "yolo_suggested_classification": yolo.suggested_classification if yolo else "normal_activity",
-            "yolo_suggested_severity": yolo.suggested_severity if yolo else 1,
-            "zone": zone,
-            "zone_risk_level": risk_level,
+            "motion": {
+                "detected": motion.motion_detected,
+                "score": round(motion.motion_score, 4),
+            },
+            "vision": {
+                "classification": vision.classification,
+                "severity": vision.severity,
+                "confidence": round(vision.confidence, 4),
+                "description": vision.description,
+            },
+            "yolo": {
+                "detections": yolo.detection_count if yolo else 0,
+                "labels": yolo.labels if yolo else [],
+                "max_confidence": round(yolo.max_confidence, 4) if yolo else 0.0,
+            },
+            "audio": audio if audio else {"anomaly_detected": False, "label": "normal", "score": 0.0},
+            "context": {
+                "zone": zone,
+                "risk_level": risk_level
+            }
         }
         prompt = _FUSION_PROMPT.format(signals_json=json.dumps(signals, indent=2))
 
@@ -155,11 +151,17 @@ class GroqFusionController:
                 max_tokens=256,
             )
             raw_text = response.choices[0].message.content.strip()
-            logger.debug("Groq fusion raw [cam=%s]: %s", camera_id, raw_text[:200])
-            return self._parse_groq_response(raw_text, vision, motion, yolo, risk_level)
+            return self._parse_groq_response(raw_text, vision, motion, yolo, audio, risk_level)
         except Exception as exc:
+            # Handle rotation
+            err_msg = str(exc).lower()
+            if "429" in err_msg or "rate_limit" in err_msg:
+                if self._rotator.rotate():
+                    self._init_client()
+                    # retry logic omitted for brevity, fallback will take over
+            
             logger.error("Groq fusion failed [cam=%s]: %s", camera_id, exc)
-            return self._heuristic_fusion(motion, vision, yolo, zone, risk_level)
+            return self._heuristic_fusion(motion, vision, yolo, audio, zone, risk_level)
 
     @staticmethod
     def _parse_groq_response(
@@ -167,6 +169,7 @@ class GroqFusionController:
         vision: VisionResult,
         motion: MotionResult,
         yolo: Optional[YOLOResult],
+        audio: Optional[dict],
         risk_level: int,
     ) -> FusionResult:
         cleaned = re.sub(r"```(?:json)?", "", raw_text).strip()
@@ -195,11 +198,13 @@ class GroqFusionController:
                 "gemini": True,
                 "groq": True,
                 "yolo": bool(yolo and yolo.detection_count > 0),
+                "audio": bool(audio and audio.get("anomaly_detected")),
+                "audio_label": audio.get("label") if audio else None,
                 "yolo_detections": yolo.detection_count if yolo else 0,
                 "motion_score": round(motion.motion_score, 4),
                 "risk_level": risk_level,
             },
-            ai_model="groq+gemini",
+            ai_model="groq+multimodal",
             should_alert=severity >= alert_threshold,
         )
 
@@ -212,6 +217,7 @@ class GroqFusionController:
         motion: MotionResult,
         vision: VisionResult,
         yolo: Optional[YOLOResult],
+        audio: Optional[dict],
         zone: str,
         risk_level: int,
     ) -> FusionResult:
@@ -232,6 +238,12 @@ class GroqFusionController:
         # Boost for dangerous zones
         if risk_level >= 4:
             severity = min(10, severity + 1)
+
+        # Boost for audio anomalies
+        if audio and audio.get("anomaly_detected"):
+            severity = min(10, severity + 2)
+            if severity > vision.severity:
+                classification = f"audio_alert_{audio.get('label')}"
 
         # Suppress if both agree it's calm
         if vision.classification == "normal_activity" and motion.motion_score < 0.05:

@@ -7,10 +7,23 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """All runtime settings resolved from environment variables or .env file."""
 
-    # AI provider keys
-    gemini_api_key: str = ""
-    groq_api_key: str = ""
-    huggingface_api_key: str = ""
+    # AI provider keys (supports comma-separated list for rotation)
+    gemini_api_keys: str = ""
+    groq_api_keys: str = ""
+    huggingface_api_keys: str = ""
+
+    # Convenience properties for backward compatibility / single key usage
+    @property
+    def gemini_api_key(self) -> str:
+        return self.gemini_api_keys.split(",")[0].strip() if self.gemini_api_keys else ""
+
+    @property
+    def groq_api_key(self) -> str:
+        return self.groq_api_keys.split(",")[0].strip() if self.groq_api_keys else ""
+
+    @property
+    def huggingface_api_key(self) -> str:
+        return self.huggingface_api_keys.split(",")[0].strip() if self.huggingface_api_keys else ""
 
     # Detection thresholds
     alert_threshold: int = 5
