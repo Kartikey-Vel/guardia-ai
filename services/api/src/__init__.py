@@ -1,1 +1,0 @@
-# Guardia API Service
