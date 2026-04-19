@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     yolo_iou_threshold: float = 0.45
     yolo_max_detections: int = 20
 
+    # Demo mode settings
+    demo_mode: bool = False
+    demo_interval_seconds: int = 10
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -1,0 +1,80 @@
+2026-04-19T22:25:42 | INFO     | root | Logging configured — level=INFO, log_dir=./logs
+2026-04-19T22:25:52 | INFO     | ai.gemini_vision | Gemini Vision initialised — model=gemini-1.5-flash
+2026-04-19T22:25:53 | INFO     | ai.groq_fusion | Groq fusion initialised — model=llama3-8b-8192
+2026-04-19T22:25:53 | INFO     | ai.motion_detector | MotionDetector initialised | min_contour_area=500, blur_kernel=21, threshold=25
+2026-04-19T22:26:07 | INFO     | ai.yolo_detector | YOLO initialized | model=yolov8n.pt
+2026-04-19T22:26:07 | INFO     | root | Logging configured — level=INFO, log_dir=./logs
+2026-04-19T22:26:07 | INFO     | root | Logging configured — level=INFO, log_dir=./logs
+2026-04-19T22:26:07 | INFO     | guardia | Initialising Guardia AI backend…
+2026-04-19T22:26:07 | INFO     | guardia | Initialising Guardia AI backend…
+2026-04-19T22:26:07 | INFO     | guardia | Database ready | threshold=5 | interval=30 frames
+2026-04-19T22:26:07 | INFO     | guardia | Database ready | threshold=5 | interval=30 frames
+2026-04-19T22:26:07 | INFO     | guardia | ✅ AI video stream background task started.
+2026-04-19T22:26:07 | INFO     | guardia | ✅ AI video stream background task started.
+2026-04-19T22:26:07 | INFO     | guardia | Guardia AI running — http://0.0.0.0:8000/docs
+2026-04-19T22:26:07 | INFO     | guardia | Guardia AI running — http://0.0.0.0:8000/docs
+2026-04-19T22:26:07 | INFO     | ai.video_stream | VideoStreamProcessor starting…
+2026-04-19T22:26:07 | INFO     | ai.video_stream | VideoStreamProcessor starting…
+2026-04-19T22:26:25 | INFO     | ai.video_stream | Camera connected (source=0). Live stream active.
+2026-04-19T22:26:25 | INFO     | ai.video_stream | Camera connected (source=0). Live stream active.
+2026-04-19T22:31:15 | INFO     | demo.scenarios | Demo scenario 'fall' started for camera CAM_001.
+2026-04-19T22:31:15 | INFO     | demo.scenarios | Demo scenario 'fall' started for camera CAM_001.
+2026-04-19T22:31:15 | INFO     | demo.scenarios | Demo step 1/3: cls=normal_activity sev=1
+2026-04-19T22:31:15 | INFO     | demo.scenarios | Demo step 1/3: cls=normal_activity sev=1
+2026-04-19T22:31:20 | INFO     | demo.scenarios | Demo step 2/3: cls=suspicious_loitering sev=5
+2026-04-19T22:31:20 | INFO     | demo.scenarios | Demo step 2/3: cls=suspicious_loitering sev=5
+2026-04-19T22:31:23 | INFO     | demo.scenarios | Demo step 3/3: cls=abandoned_object sev=8
+2026-04-19T22:31:23 | INFO     | demo.scenarios | Demo step 3/3: cls=abandoned_object sev=8
+2026-04-19T22:31:23 | INFO     | demo.scenarios | Demo scenario 'fall' completed.
+2026-04-19T22:31:23 | INFO     | demo.scenarios | Demo scenario 'fall' completed.
+2026-04-19T22:31:23 | INFO     | utils.backup | Backup created: backups\guardia_20260419_170123.db (48.0 KB)
+2026-04-19T22:31:23 | INFO     | utils.backup | Backup created: backups\guardia_20260419_170123.db (48.0 KB)
+2026-04-19T22:41:20 | INFO     | root | Logging configured — level=INFO, log_dir=./logs
+2026-04-19T22:41:26 | INFO     | ai.gemini_vision | Gemini Vision initialised — model=gemini-1.5-flash sdk=new
+2026-04-19T22:41:27 | INFO     | ai.groq_fusion | Groq fusion initialised — model=llama3-8b-8192
+2026-04-19T22:41:27 | INFO     | ai.motion_detector | MotionDetector initialised | min_contour_area=500, blur_kernel=21, threshold=25
+2026-04-19T22:41:37 | INFO     | ai.yolo_detector | YOLO initialized | model=yolov8n.pt
+2026-04-19T22:41:37 | INFO     | root | Logging configured — level=INFO, log_dir=./logs
+2026-04-19T22:41:37 | INFO     | root | Logging configured — level=INFO, log_dir=./logs
+2026-04-19T22:41:37 | INFO     | guardia | Initialising Guardia AI backend…
+2026-04-19T22:41:37 | INFO     | guardia | Initialising Guardia AI backend…
+2026-04-19T22:41:37 | INFO     | guardia | Database ready | threshold=5 | interval=30 frames
+2026-04-19T22:41:37 | INFO     | guardia | Database ready | threshold=5 | interval=30 frames
+2026-04-19T22:41:37 | INFO     | guardia | ✅ AI video stream background task started.
+2026-04-19T22:41:37 | INFO     | guardia | ✅ AI video stream background task started.
+2026-04-19T22:41:37 | INFO     | guardia | Guardia AI running — http://0.0.0.0:8000/docs
+2026-04-19T22:41:37 | INFO     | guardia | Guardia AI running — http://0.0.0.0:8000/docs
+2026-04-19T22:41:37 | INFO     | ai.video_stream | VideoStreamProcessor starting…
+2026-04-19T22:41:37 | INFO     | ai.video_stream | VideoStreamProcessor starting…
+2026-04-19T22:41:56 | INFO     | ai.video_stream | Camera connected (source=0). Live stream active.
+2026-04-19T22:41:56 | INFO     | ai.video_stream | Camera connected (source=0). Live stream active.
+2026-04-19T22:44:03 | INFO     | demo.scenarios | Demo scenario 'fall' started for camera CAM_001.
+2026-04-19T22:44:03 | INFO     | demo.scenarios | Demo scenario 'fall' started for camera CAM_001.
+2026-04-19T22:44:03 | INFO     | demo.scenarios | Demo step 1/3: cls=normal_activity sev=1
+2026-04-19T22:44:03 | INFO     | demo.scenarios | Demo step 1/3: cls=normal_activity sev=1
+2026-04-19T22:44:08 | INFO     | demo.scenarios | Demo step 2/3: cls=suspicious_loitering sev=5
+2026-04-19T22:44:08 | INFO     | demo.scenarios | Demo step 2/3: cls=suspicious_loitering sev=5
+2026-04-19T22:44:11 | INFO     | demo.scenarios | Demo step 3/3: cls=abandoned_object sev=8
+2026-04-19T22:44:11 | INFO     | demo.scenarios | Demo step 3/3: cls=abandoned_object sev=8
+2026-04-19T22:44:11 | INFO     | demo.scenarios | Demo scenario 'fall' completed.
+2026-04-19T22:44:11 | INFO     | demo.scenarios | Demo scenario 'fall' completed.
+2026-04-19T22:44:12 | INFO     | utils.backup | Backup created: backups\guardia_20260419_171412.db (48.0 KB)
+2026-04-19T22:44:12 | INFO     | utils.backup | Backup created: backups\guardia_20260419_171412.db (48.0 KB)
+2026-04-19T22:47:26 | INFO     | demo.scenarios | Demo scenario 'fall' started for camera CAM_001.
+2026-04-19T22:47:26 | INFO     | demo.scenarios | Demo scenario 'fall' started for camera CAM_001.
+2026-04-19T22:47:26 | INFO     | demo.scenarios | Demo step 1/3: cls=normal_activity sev=1
+2026-04-19T22:47:26 | INFO     | demo.scenarios | Demo step 1/3: cls=normal_activity sev=1
+2026-04-19T22:47:29 | INFO     | utils.backup | Backup created: backups\guardia_20260419_171729.db (48.0 KB)
+2026-04-19T22:47:29 | INFO     | utils.backup | Backup created: backups\guardia_20260419_171729.db (48.0 KB)
+2026-04-19T22:47:31 | INFO     | demo.scenarios | Demo step 2/3: cls=suspicious_loitering sev=5
+2026-04-19T22:47:31 | INFO     | demo.scenarios | Demo step 2/3: cls=suspicious_loitering sev=5
+2026-04-19T22:47:34 | INFO     | demo.scenarios | Demo step 3/3: cls=abandoned_object sev=8
+2026-04-19T22:47:34 | INFO     | demo.scenarios | Demo step 3/3: cls=abandoned_object sev=8
+2026-04-19T22:47:34 | INFO     | demo.scenarios | Demo scenario 'fall' completed.
+2026-04-19T22:47:34 | INFO     | demo.scenarios | Demo scenario 'fall' completed.
+2026-04-19T23:09:24 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=physical_altercation sev=8 conf=0.45
+2026-04-19T23:09:24 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=physical_altercation sev=8 conf=0.45
+2026-04-19T23:09:25 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-19T23:09:25 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-19T23:09:25 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=physical_altercation sev=9 alert=True
+2026-04-19T23:09:25 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=physical_altercation sev=9 alert=True

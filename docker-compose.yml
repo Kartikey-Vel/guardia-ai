@@ -1,0 +1,71 @@
+# Guardia AI — Docker Compose (TASK-040 / TASK-056-058)
+# =========================================================
+# Full-stack: FastAPI backend + Next.js frontend
+#
+# Usage:
+#   docker-compose up --build          # start all services
+#   docker-compose up backend          # backend only
+#   docker-compose logs -f backend     # watch backend logs
+#
+# API keys: copy backend/.env.example to backend/.env and fill in keys,
+# OR set them as environment variables in your shell before running.
+
+version: "3.9"
+
+services:
+  # ── Backend (FastAPI) ──────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: guardia-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY:-}
+      - ALERT_THRESHOLD=${ALERT_THRESHOLD:-5}
+      - ANALYSIS_INTERVAL_FRAMES=${ANALYSIS_INTERVAL_FRAMES:-30}
+      - DATABASE_URL=sqlite:///./guardia.db
+      - YOLO_ENABLED=${YOLO_ENABLED:-true}
+      - YOLO_MODEL=${YOLO_MODEL:-yolov8n.pt}
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEMO_MODE=${DEMO_MODE:-false}
+      - DEMO_INTERVAL_SECONDS=${DEMO_INTERVAL_SECONDS:-10}
+    volumes:
+      # Persist DB and logs outside the container
+      - guardia_db:/app/guardia.db
+      - guardia_logs:/app/logs
+      - guardia_backups:/app/backups
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  # ── Frontend (Next.js) ─────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: guardia-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws/alerts
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+# ── Named volumes ──────────────────────────────────────────────────────────
+volumes:
+  guardia_db:
+  guardia_logs:
+  guardia_backups:

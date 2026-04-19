@@ -98,19 +98,32 @@ class GeminiVisionAnalyzer:
             )
             return
         try:
-            import google.generativeai as genai  # type: ignore
+            # Use the current google-genai SDK (google.generativeai is deprecated)
+            try:
+                import google.genai as genai  # type: ignore
+                from google.genai import types as genai_types  # type: ignore
+                self._sdk = "new"
+            except ImportError:
+                import google.generativeai as genai  # type: ignore  # legacy fallback
+                self._sdk = "legacy"
 
-            genai.configure(api_key=self._cfg.gemini_api_key)
-            self._model = genai.GenerativeModel(
-                model_name=self._cfg.gemini_model,
-                generation_config={
-                    "temperature": 0.2,   # low temp → consistent JSON
-                    "top_p": 0.8,
-                    "max_output_tokens": 256,
-                },
-            )
+            if self._sdk == "new":
+                self._client = genai.Client(api_key=self._cfg.gemini_api_key)
+                self._model_name = self._cfg.gemini_model
+            else:
+                genai.configure(api_key=self._cfg.gemini_api_key)
+                self._model = genai.GenerativeModel(
+                    model_name=self._cfg.gemini_model,
+                    generation_config={
+                        "temperature": 0.2,
+                        "top_p": 0.8,
+                        "max_output_tokens": 256,
+                    },
+                )
+                self._client = None
+
             self._initialized = True
-            logger.info("Gemini Vision initialised — model=%s", self._cfg.gemini_model)
+            logger.info("Gemini Vision initialised — model=%s sdk=%s", self._cfg.gemini_model, self._sdk)
         except Exception as exc:
             logger.error("Failed to initialise Gemini client: %s", exc)
 
@@ -187,10 +200,28 @@ class GeminiVisionAnalyzer:
             f"Motion intensity score for this frame: {motion_score:.3f} "
             f"(0=no motion, 1=maximum motion). Camera ID: {camera_id}."
         )
-        prompt_parts = [_SYSTEM_PROMPT, context_note, image]
 
-        response = self._model.generate_content(prompt_parts)
-        raw_text: str = response.text.strip()
+        if getattr(self, "_sdk", "legacy") == "new":
+            # New google.genai SDK path
+            import google.genai as genai  # type: ignore
+            from google.genai import types as genai_types  # type: ignore
+            # Convert PIL image to bytes
+            buf = BytesIO()
+            image.save(buf, format="JPEG", quality=80)
+            img_bytes = buf.getvalue()
+            response = self._client.models.generate_content(
+                model=self._model_name,
+                contents=[
+                    _SYSTEM_PROMPT + "\n" + context_note,
+                    genai_types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg"),
+                ],
+            )
+            raw_text = response.text.strip()
+        else:
+            # Legacy google.generativeai path
+            prompt_parts = [_SYSTEM_PROMPT, context_note, image]
+            response = self._model.generate_content(prompt_parts)
+            raw_text = response.text.strip()
 
         logger.debug("Gemini raw response [cam=%s]: %s", camera_id, raw_text[:200])
         return self._parse_response(raw_text)
