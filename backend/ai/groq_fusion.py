@@ -19,6 +19,7 @@ from typing import Optional
 
 from config import get_settings
 from models.schemas import FusionResult, MotionResult, VisionResult, YOLOResult
+from utils.confidence_scorer import ConfidenceScorer
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +39,13 @@ Rules:
 - If both signals agree the scene is "normal_activity" keep severity <= 3.
 
 Respond ONLY with a single JSON object (no markdown, no explanation):
-{
+{{
   "classification": "<final classification string>",
   "severity": <int 1-10>,
   "confidence": <float 0.00-1.00>,
   "description": "<≤2 sentence action-oriented summary>",
   "action_hint": "<recommended immediate action>"
-}
+}}
 """
 
 
@@ -236,9 +237,12 @@ class GroqFusionController:
         if vision.classification == "normal_activity" and motion.motion_score < 0.05:
             severity = min(severity, 3)
 
-        confidence = (vision.confidence + min(motion.motion_score * 2, 1.0)) / 2
-        if yolo and yolo.detection_count > 0:
-            confidence = (confidence + yolo.max_confidence) / 2
+        yolo_conf = yolo.max_confidence if (yolo and yolo.detection_count > 0) else None
+        confidence = ConfidenceScorer.compute_fused_confidence(
+            vision_conf=vision.confidence,
+            motion_score=motion.motion_score,
+            yolo_conf=yolo_conf
+        )
 
         alert_threshold = get_settings().alert_threshold
         return FusionResult(

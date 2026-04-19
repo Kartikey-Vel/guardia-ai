@@ -39,6 +39,32 @@ def system_status(db: Session = Depends(get_db)):
         "total_cameras_registered": total_cameras,
     }
 
+@router.get("/models/status")
+def models_status():
+    """Return detailed connectivity and readiness status for all AI models."""
+    cfg = get_settings()
+    from ai.yolo_detector import yolo_detector
+
+    return {
+        "yolo": {
+            "enabled": cfg.yolo_enabled,
+            "ready": yolo_detector.is_ready,
+            "model_name": cfg.yolo_model,
+        },
+        "gemini": {
+            "configured": bool(cfg.gemini_api_key),
+            "model_name": cfg.gemini_model,
+        },
+        "groq": {
+            "configured": bool(cfg.groq_api_key),
+            "model_name": cfg.groq_model,
+        },
+        "ollama": {
+            # Ollama is implicitly the fallback when Groq fails, but we can track if it's set as primary if we wanted
+            "fallback_enabled": True
+        }
+    }
+
 
 @router.post("/analyze-frame")
 async def analyze_frame(
