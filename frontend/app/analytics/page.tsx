@@ -2,8 +2,7 @@
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { AnalysisCards } from "@/components/dashboard/AnalysisCards";
-import { Card } from "@heroui/react";
-import { Activity } from "lucide-react";
+import { PerformanceMetrics } from "@/components/dashboard/PerformanceMetrics";
 
 export default function AnalyticsPage() {
   return (
@@ -16,12 +15,7 @@ export default function AnalyticsPage() {
 
         <AnalysisCards />
         
-        <Card className="w-full h-96 flex items-center justify-center bg-background/50 backdrop-blur-md border border-white/10">
-          <div className="flex flex-col items-center text-default-400 gap-4">
-            <Activity size={48} className="opacity-20" />
-            <p>Detailed charts module coming soon.</p>
-          </div>
-        </Card>
+        <PerformanceMetrics />
       </div>
     </DashboardLayout>
   );

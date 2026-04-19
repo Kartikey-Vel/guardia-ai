@@ -1,9 +1,11 @@
 "use client";
 
-import { Button, Badge, Avatar } from "@heroui/react";
+import { Button, Badge, Avatar, Popover } from "@heroui/react";
 import { Menu, Bell, Search, PanelLeftOpen } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { usePathname } from "next/navigation";
+import { AlertList } from "../dashboard/AlertList";
+import { MOCK_ALERTS } from "@/lib/data";
 
 interface NavbarProps {
   onMenuClick: () => void;
@@ -63,12 +65,21 @@ export function Navbar({ onMenuClick, isCollapsed, onCollapse }: NavbarProps) {
             <Search size={18} />
           </Button>
           
-          <Badge.Anchor>
-            <Button isIconOnly variant="tertiary" aria-label="Notifications" className="text-default-500">
-              <Bell size={18} />
-            </Button>
-            <Badge color="danger" placement="top-right">3</Badge>
-          </Badge.Anchor>
+          <Popover>
+            <Popover.Trigger>
+              <Badge.Anchor>
+                <Button isIconOnly variant="tertiary" aria-label="Notifications" className="text-default-500">
+                  <Bell size={18} />
+                </Button>
+                <Badge color="danger" placement="top-right">{MOCK_ALERTS.filter(a => a.severity === "CRITICAL").length}</Badge>
+              </Badge.Anchor>
+            </Popover.Trigger>
+            <Popover.Content className="p-0 border border-white/10 shadow-2xl bg-background/80 backdrop-blur-xl">
+              <Popover.Dialog className="p-0 border-none">
+                <AlertList />
+              </Popover.Dialog>
+            </Popover.Content>
+          </Popover>
           
           <div className="w-px h-6 bg-divider mx-1" />
           

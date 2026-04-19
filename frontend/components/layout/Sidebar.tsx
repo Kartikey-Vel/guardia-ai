@@ -30,7 +30,6 @@ export function Sidebar({ isMobileOpen, isCollapsed, onCollapse }: SidebarProps)
   const navItems = [
     { name: "Dashboard", href: "/", icon: <LayoutDashboard size={20} /> },
     { name: "Live Feeds", href: "/live-feeds", icon: <Video size={20} /> },
-    { name: "Alerts", href: "/alerts", icon: <Bell size={20} /> },
     { name: "Analytics", href: "/analytics", icon: <Activity size={20} /> },
     { name: "Settings", href: "/settings", icon: <Settings size={20} /> },
   ];
