@@ -18,7 +18,7 @@ import re
 from typing import Optional
 
 from config import get_settings
-from models.schemas import FusionResult, MotionResult, VisionResult
+from models.schemas import FusionResult, MotionResult, VisionResult, YOLOResult
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +95,7 @@ class GroqFusionController:
         self,
         motion: MotionResult,
         vision: VisionResult,
+        yolo: Optional[YOLOResult] = None,
         zone: str = "general",
         risk_level: int = 2,
         camera_id: str = "default",
@@ -111,8 +112,8 @@ class GroqFusionController:
         camera_id:   Identifier for logging
         """
         if self._initialized and self._client:
-            return self._groq_fusion(motion, vision, zone, risk_level, camera_id)
-        return self._heuristic_fusion(motion, vision, zone, risk_level)
+            return self._groq_fusion(motion, vision, yolo, zone, risk_level, camera_id)
+        return self._heuristic_fusion(motion, vision, yolo, zone, risk_level)
 
     # ------------------------------------------------------------------
     # Groq-powered fusion
@@ -122,6 +123,7 @@ class GroqFusionController:
         self,
         motion: MotionResult,
         vision: VisionResult,
+        yolo: Optional[YOLOResult],
         zone: str,
         risk_level: int,
         camera_id: str,
@@ -134,6 +136,11 @@ class GroqFusionController:
             "gemini_severity": vision.severity,
             "gemini_confidence": round(vision.confidence, 4),
             "gemini_description": vision.description,
+            "yolo_detection_count": yolo.detection_count if yolo else 0,
+            "yolo_labels": yolo.labels if yolo else [],
+            "yolo_max_confidence": round(yolo.max_confidence, 4) if yolo else 0.0,
+            "yolo_suggested_classification": yolo.suggested_classification if yolo else "normal_activity",
+            "yolo_suggested_severity": yolo.suggested_severity if yolo else 1,
             "zone": zone,
             "zone_risk_level": risk_level,
         }
@@ -148,16 +155,17 @@ class GroqFusionController:
             )
             raw_text = response.choices[0].message.content.strip()
             logger.debug("Groq fusion raw [cam=%s]: %s", camera_id, raw_text[:200])
-            return self._parse_groq_response(raw_text, vision, motion, risk_level)
+            return self._parse_groq_response(raw_text, vision, motion, yolo, risk_level)
         except Exception as exc:
             logger.error("Groq fusion failed [cam=%s]: %s", camera_id, exc)
-            return self._heuristic_fusion(motion, vision, zone, risk_level)
+            return self._heuristic_fusion(motion, vision, yolo, zone, risk_level)
 
     @staticmethod
     def _parse_groq_response(
         raw_text: str,
         vision: VisionResult,
         motion: MotionResult,
+        yolo: Optional[YOLOResult],
         risk_level: int,
     ) -> FusionResult:
         cleaned = re.sub(r"```(?:json)?", "", raw_text).strip()
@@ -185,6 +193,8 @@ class GroqFusionController:
             attribution={
                 "gemini": True,
                 "groq": True,
+                "yolo": bool(yolo and yolo.detection_count > 0),
+                "yolo_detections": yolo.detection_count if yolo else 0,
                 "motion_score": round(motion.motion_score, 4),
                 "risk_level": risk_level,
             },
@@ -200,12 +210,19 @@ class GroqFusionController:
     def _heuristic_fusion(
         motion: MotionResult,
         vision: VisionResult,
+        yolo: Optional[YOLOResult],
         zone: str,
         risk_level: int,
     ) -> FusionResult:
         """Weighted combination without LLM inference."""
-        # Start from Gemini severity
+        # Start from the strongest of Gemini and YOLO signals
         severity = vision.severity
+        classification = vision.classification
+
+        if yolo and yolo.detection_count > 0:
+            severity = max(severity, yolo.suggested_severity)
+            if yolo.suggested_severity >= vision.severity + 1:
+                classification = yolo.suggested_classification
 
         # Boost for high motion
         if motion.motion_score > 0.4:
@@ -220,20 +237,24 @@ class GroqFusionController:
             severity = min(severity, 3)
 
         confidence = (vision.confidence + min(motion.motion_score * 2, 1.0)) / 2
+        if yolo and yolo.detection_count > 0:
+            confidence = (confidence + yolo.max_confidence) / 2
 
         alert_threshold = get_settings().alert_threshold
         return FusionResult(
-            classification=vision.classification,
+            classification=classification,
             severity=severity,
             confidence=round(confidence, 4),
             description=vision.description,
             attribution={
                 "gemini": True,
                 "groq": False,  # fallback — no LLM call
+                "yolo": bool(yolo and yolo.detection_count > 0),
+                "yolo_detections": yolo.detection_count if yolo else 0,
                 "motion_score": round(motion.motion_score, 4),
                 "risk_level": risk_level,
             },
-            ai_model="gemini+heuristic",
+            ai_model="gemini+yolo+heuristic" if yolo else "gemini+heuristic",
             should_alert=severity >= alert_threshold,
         )
 

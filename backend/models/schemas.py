@@ -130,6 +130,28 @@ class VisionResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# YOLO detection result
+# ---------------------------------------------------------------------------
+
+
+class YOLODetection(BaseModel):
+    label: str
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    bbox_xyxy: List[float] = Field(default_factory=list)
+
+
+class YOLOResult(BaseModel):
+    enabled: bool
+    model: str
+    detection_count: int
+    labels: List[str] = Field(default_factory=list)
+    max_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    detections: List[YOLODetection] = Field(default_factory=list)
+    suggested_classification: str = "normal_activity"
+    suggested_severity: int = Field(default=1, ge=1, le=10)
+
+
+# ---------------------------------------------------------------------------
 # Fusion result
 # ---------------------------------------------------------------------------
 

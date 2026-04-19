@@ -23,8 +23,9 @@ import numpy as np
 from ai.gemini_vision import gemini_analyzer
 from ai.groq_fusion import groq_fusion
 from ai.motion_detector import motion_detector
+from ai.yolo_detector import yolo_detector
 from config import get_settings
-from models.schemas import EventCreate, FusionResult, MotionResult, VisionResult
+from models.schemas import EventCreate, FusionResult, MotionResult, VisionResult, YOLOResult
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ class AIFramePipeline:
         """Re-initialize all AI clients (called after API key settings update)."""
         gemini_analyzer.reinitialize()
         groq_fusion.reinitialize()
+        yolo_detector.reinitialize()
         logger.info("AI modules reinitialized after settings update.")
 
     # ------------------------------------------------------------------
@@ -71,25 +73,32 @@ class AIFramePipeline:
         """
         # --- Step 1: Motion detection ---
         motion: MotionResult = motion_detector.process_frame(frame, camera_id)
+        yolo: Optional[YOLOResult] = None
 
         if not motion.motion_detected:
             return None  # No motion — skip AI inference entirely
 
+        # --- Step 2: YOLO local detection (fast local model) ---
+        yolo = yolo_detector.detect(frame, camera_id)
+
         if not motion.should_analyze:
             # Motion present but not at the analysis interval yet
-            return None
+            # Force analysis when YOLO sees a high-severity signal.
+            if not (yolo and yolo.suggested_severity >= self._cfg.alert_threshold + 1):
+                return None
 
-        # --- Step 2: Gemini vision analysis ---
+        # --- Step 3: Gemini vision analysis ---
         vision: VisionResult = gemini_analyzer.analyze_frame(
             frame,
             camera_id=camera_id,
             motion_score=motion.motion_score,
         )
 
-        # --- Step 3: Fusion ---
+        # --- Step 4: Fusion ---
         result: FusionResult = groq_fusion.fuse(
             motion,
             vision,
+            yolo=yolo,
             zone=zone,
             risk_level=risk_level,
             camera_id=camera_id,
@@ -119,9 +128,11 @@ class AIFramePipeline:
         even when AI analysis is not triggered.
         """
         motion_result, frame = motion_detector.process_bytes(image_bytes, camera_id)
+        yolo = yolo_detector.detect(frame, camera_id) if motion_result.motion_detected else None
 
         if not motion_result.motion_detected or not motion_result.should_analyze:
-            return None, motion_result
+            if not (yolo and yolo.suggested_severity >= self._cfg.alert_threshold + 1):
+                return None, motion_result
 
         vision: VisionResult = gemini_analyzer.analyze_frame(
             frame,
@@ -131,6 +142,7 @@ class AIFramePipeline:
         fusion = groq_fusion.fuse(
             motion_result,
             vision,
+            yolo=yolo,
             zone=zone,
             risk_level=risk_level,
             camera_id=camera_id,

@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     # Groq model
     groq_model: str = "llama3-8b-8192"
 
+    # YOLO (Ultralytics)
+    yolo_enabled: bool = True
+    yolo_model: str = "yolov8n.pt"
+    yolo_conf_threshold: float = 0.35
+    yolo_iou_threshold: float = 0.45
+    yolo_max_detections: int = 20
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
