@@ -70,6 +70,14 @@ SCENARIOS: dict = {
         {"classification": "crowd_formation", "severity": 8, "confidence": 0.88,
          "description": "CROWD SURGE: Dangerous density threshold exceeded — barrier protocols activate.", "delay": 6},
     ],
+    "forced_entry": [
+        {"classification": "suspicious_loitering", "severity": 4, "confidence": 0.71,
+         "description": "Unknown individual surveying perimeter.", "delay": 0},
+        {"classification": "unauthorized_access", "severity": 7, "confidence": 0.88,
+         "description": "ALERT: Perimeter breach detected at warehouse door with glass breaking sound.", "delay": 4},
+        {"classification": "unauthorized_access", "severity": 9, "confidence": 0.93,
+         "description": "CRITICAL: Forced entry confirmed — broken glass and unauthorized access in progress.", "delay": 7},
+    ],
 }
 
 

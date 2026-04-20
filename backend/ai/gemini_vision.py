@@ -158,8 +158,8 @@ class GeminiVisionAnalyzer:
         except Exception as exc:
             # TASK-052: API Key rotation on quota hit
             err_msg = str(exc).lower()
-            if "429" in err_msg or "quota" in err_msg or "rate limit" in err_msg:
-                logger.warning("Gemini quota reached. Attempting key rotation...")
+            if "429" in err_msg or "quota" in err_msg or "rate limit" in err_msg or "400" in err_msg or "invalid" in err_msg or "not valid" in err_msg:
+                logger.warning("Gemini API error. Attempting key rotation...")
                 if self._rotator.rotate():
                     self._init_client()
                     try:

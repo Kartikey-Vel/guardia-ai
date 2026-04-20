@@ -78,3 +78,483 @@
 2026-04-19T23:09:25 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
 2026-04-19T23:09:25 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=physical_altercation sev=9 alert=True
 2026-04-19T23:09:25 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=physical_altercation sev=9 alert=True
+2026-04-20T14:37:06 | INFO     | root | Logging configured — level=INFO, log_dir=./logs
+2026-04-20T14:37:08 | WARNING  | ai.utils | KeyRotator initialized with zero keys.
+2026-04-20T14:37:08 | WARNING  | ai.gemini_vision | No Gemini API keys available — Gemini vision will use rule-based fallback.
+2026-04-20T14:37:34 | INFO     | root | Logging configured — level=INFO, log_dir=./logs
+2026-04-20T14:37:34 | WARNING  | ai.utils | KeyRotator initialized with zero keys.
+2026-04-20T14:37:34 | WARNING  | ai.gemini_vision | No Gemini API keys available — Gemini vision will use rule-based fallback.
+2026-04-20T14:37:34 | WARNING  | ai.utils | KeyRotator initialized with zero keys.
+2026-04-20T14:37:34 | WARNING  | ai.groq_fusion | No Groq API keys available — fusion will use weighted heuristic.
+2026-04-20T14:37:34 | INFO     | ai.motion_detector | MotionDetector initialised | min_contour_area=500, blur_kernel=21, threshold=25
+2026-04-20T14:43:52 | INFO     | root | Logging configured — level=INFO, log_dir=./logs
+2026-04-20T14:43:53 | WARNING  | ai.utils | KeyRotator initialized with zero keys.
+2026-04-20T14:43:53 | WARNING  | ai.gemini_vision | No Gemini API keys available — Gemini vision will use rule-based fallback.
+2026-04-20T14:43:53 | WARNING  | ai.utils | KeyRotator initialized with zero keys.
+2026-04-20T14:43:53 | WARNING  | ai.groq_fusion | No Groq API keys available — fusion will use weighted heuristic.
+2026-04-20T14:43:53 | INFO     | ai.motion_detector | MotionDetector initialised | min_contour_area=500, blur_kernel=21, threshold=25
+2026-04-20T14:43:58 | INFO     | ai.yolo_detector | YOLO initialized | model=yolov8n.pt
+2026-04-20T14:43:59 | INFO     | ai.audio_detector | AudioDetector initialized in STUB mode (No HF API Key).
+2026-04-20T14:43:59 | INFO     | guardia | Initialising Guardia AI backend…
+2026-04-20T14:43:59 | INFO     | guardia | Database ready | threshold=5 | interval=30 frames
+2026-04-20T14:43:59 | INFO     | guardia | ✅ AI video stream background task started.
+2026-04-20T14:43:59 | INFO     | guardia | Guardia AI running — http://0.0.0.0:8000/docs
+2026-04-20T14:43:59 | INFO     | ai.video_stream | VideoStreamProcessor starting…
+2026-04-20T14:44:02 | INFO     | ai.video_stream | Camera connected (source=0). Live stream active.
+2026-04-20T14:44:02 | INFO     | websocket.manager | WebSocket connected — total clients: 1
+2026-04-20T14:44:05 | INFO     | websocket.manager | WebSocket connected — total clients: 2
+2026-04-20T14:44:06 | INFO     | websocket.manager | WebSocket connected — total clients: 3
+2026-04-20T14:44:07 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=unauthorized_access sev=6 conf=0.50
+2026-04-20T14:44:07 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=unauthorized_access sev=6 alert=True
+2026-04-20T14:44:13 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:44:13 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:44:20 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:44:20 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:44:25 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:44:25 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:44:29 | INFO     | demo.scenarios | Demo scenario 'loitering' started for camera CAM_001.
+2026-04-20T14:44:29 | INFO     | demo.scenarios | Demo step 1/3: cls=suspicious_loitering sev=4
+2026-04-20T14:44:29 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:44:29 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:44:37 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:44:37 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:44:39 | INFO     | demo.scenarios | Demo step 2/3: cls=suspicious_loitering sev=5
+2026-04-20T14:44:49 | INFO     | demo.scenarios | Demo step 3/3: cls=suspicious_loitering sev=6
+2026-04-20T14:44:49 | INFO     | demo.scenarios | Demo scenario 'loitering' completed.
+2026-04-20T14:45:10 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:45:10 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=normal_activity sev=2 alert=False
+2026-04-20T14:45:14 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:45:14 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:45:30 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=suspicious_loitering sev=4 conf=0.55
+2026-04-20T14:45:30 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:45:34 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:45:34 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:45:39 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:45:39 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:45:43 | INFO     | ai.gemini_vision | Gemini fallback used (reason=no_api_key): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:45:43 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=normal_activity sev=2 alert=False
+2026-04-20T14:45:46 | INFO     | demo.scenarios | Demo scenario 'loitering' started for camera CAM_001.
+2026-04-20T14:45:46 | INFO     | demo.scenarios | Demo step 1/3: cls=suspicious_loitering sev=4
+2026-04-20T14:45:58 | INFO     | root | Logging configured — level=INFO, log_dir=./logs
+2026-04-20T14:46:01 | INFO     | ai.gemini_vision | Gemini Vision initialised — model=gemini-1.5-flash sdk=legacy
+2026-04-20T14:46:01 | INFO     | ai.groq_fusion | Groq fusion initialised — model=llama3-8b-8192
+2026-04-20T14:46:01 | INFO     | ai.motion_detector | MotionDetector initialised | min_contour_area=500, blur_kernel=21, threshold=25
+2026-04-20T14:46:08 | INFO     | ai.yolo_detector | YOLO initialized | model=yolov8n.pt
+2026-04-20T14:46:08 | INFO     | ai.audio_detector | AudioDetector initialized with HuggingFace Inference API.
+2026-04-20T14:46:08 | INFO     | guardia | Initialising Guardia AI backend…
+2026-04-20T14:46:08 | INFO     | guardia | Database ready | threshold=5 | interval=30 frames
+2026-04-20T14:46:08 | INFO     | guardia | ✅ AI video stream background task started.
+2026-04-20T14:46:08 | INFO     | guardia | Guardia AI running — http://0.0.0.0:8000/docs
+2026-04-20T14:46:08 | INFO     | ai.video_stream | VideoStreamProcessor starting…
+2026-04-20T14:46:12 | INFO     | ai.video_stream | Camera connected (source=0). Live stream active.
+2026-04-20T14:46:13 | INFO     | websocket.manager | WebSocket connected — total clients: 1
+2026-04-20T14:46:14 | INFO     | websocket.manager | WebSocket connected — total clients: 2
+2026-04-20T14:46:16 | INFO     | websocket.manager | WebSocket connected — total clients: 3
+2026-04-20T14:46:18 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+domain: "googleapis.com"
+metadata {
+  key: "service"
+  value: "generativelanguage.googleapis.com"
+}
+, locale: "en-US"
+message: "API key not valid. Please pass a valid API key."
+]
+2026-04-20T14:46:18 | INFO     | ai.gemini_vision | Gemini fallback used (reason=400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+d): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:46:19 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:46:19 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=normal_activity sev=2 alert=False
+2026-04-20T14:46:26 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+domain: "googleapis.com"
+metadata {
+  key: "service"
+  value: "generativelanguage.googleapis.com"
+}
+, locale: "en-US"
+message: "API key not valid. Please pass a valid API key."
+]
+2026-04-20T14:46:26 | INFO     | ai.gemini_vision | Gemini fallback used (reason=400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+d): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:46:26 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:46:26 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:46:31 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+domain: "googleapis.com"
+metadata {
+  key: "service"
+  value: "generativelanguage.googleapis.com"
+}
+, locale: "en-US"
+message: "API key not valid. Please pass a valid API key."
+]
+2026-04-20T14:46:31 | INFO     | ai.gemini_vision | Gemini fallback used (reason=400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+d): cls=suspicious_loitering sev=4 conf=0.55
+2026-04-20T14:46:32 | ERROR    | ai.audio_detector | HuggingFace Audio API error: 404 Client Error: Not Found for url: https://api-inference.huggingface.co/models/MIT/ast-finetuned-audioset-10-10-0.4593
+2026-04-20T14:46:32 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:46:32 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:46:38 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+domain: "googleapis.com"
+metadata {
+  key: "service"
+  value: "generativelanguage.googleapis.com"
+}
+, locale: "en-US"
+message: "API key not valid. Please pass a valid API key."
+]
+2026-04-20T14:46:38 | INFO     | ai.gemini_vision | Gemini fallback used (reason=400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+d): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:46:38 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:46:38 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:46:44 | INFO     | websocket.manager | WebSocket disconnected — total clients: 2
+2026-04-20T14:46:44 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:46:44 | INFO     | websocket.manager | WebSocket disconnected — total clients: 1
+2026-04-20T14:46:44 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:46:44 | INFO     | websocket.manager | WebSocket disconnected — total clients: 0
+2026-04-20T14:46:44 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:46:44 | INFO     | guardia | Guardia AI shutting down…
+2026-04-20T14:46:44 | INFO     | ai.video_stream | Camera released.
+2026-04-20T14:46:44 | INFO     | guardia | Guardia AI stopped cleanly.
+2026-04-20T14:46:47 | INFO     | root | Logging configured — level=INFO, log_dir=./logs
+2026-04-20T14:46:48 | INFO     | ai.gemini_vision | Gemini Vision initialised — model=gemini-1.5-flash sdk=legacy
+2026-04-20T14:46:49 | INFO     | ai.groq_fusion | Groq fusion initialised — model=llama3-8b-8192
+2026-04-20T14:46:49 | INFO     | ai.motion_detector | MotionDetector initialised | min_contour_area=500, blur_kernel=21, threshold=25
+2026-04-20T14:46:51 | INFO     | ai.yolo_detector | YOLO initialized | model=yolov8n.pt
+2026-04-20T14:46:51 | INFO     | ai.audio_detector | AudioDetector initialized with HuggingFace Inference API.
+2026-04-20T14:46:52 | INFO     | guardia | Initialising Guardia AI backend…
+2026-04-20T14:46:52 | INFO     | guardia | Database ready | threshold=5 | interval=30 frames
+2026-04-20T14:46:52 | INFO     | guardia | ✅ AI video stream background task started.
+2026-04-20T14:46:52 | INFO     | guardia | Guardia AI running — http://0.0.0.0:8000/docs
+2026-04-20T14:46:52 | INFO     | ai.video_stream | VideoStreamProcessor starting…
+2026-04-20T14:47:29 | INFO     | root | Logging configured — level=INFO, log_dir=./logs
+2026-04-20T14:47:30 | INFO     | ai.gemini_vision | Gemini Vision initialised — model=gemini-1.5-flash sdk=legacy
+2026-04-20T14:47:30 | INFO     | ai.groq_fusion | Groq fusion initialised — model=llama3-8b-8192
+2026-04-20T14:47:30 | INFO     | ai.motion_detector | MotionDetector initialised | min_contour_area=500, blur_kernel=21, threshold=25
+2026-04-20T14:47:33 | INFO     | ai.yolo_detector | YOLO initialized | model=yolov8n.pt
+2026-04-20T14:47:33 | INFO     | ai.audio_detector | AudioDetector initialized with HuggingFace Inference API.
+2026-04-20T14:47:33 | INFO     | guardia | Initialising Guardia AI backend…
+2026-04-20T14:47:33 | INFO     | guardia | Database ready | threshold=5 | interval=30 frames
+2026-04-20T14:47:33 | INFO     | guardia | ✅ AI video stream background task started.
+2026-04-20T14:47:33 | INFO     | guardia | Guardia AI running — http://0.0.0.0:8000/docs
+2026-04-20T14:47:33 | INFO     | ai.video_stream | VideoStreamProcessor starting…
+2026-04-20T14:47:36 | INFO     | ai.video_stream | Camera connected (source=0). Live stream active.
+2026-04-20T14:47:36 | INFO     | websocket.manager | WebSocket connected — total clients: 1
+2026-04-20T14:47:36 | INFO     | websocket.manager | WebSocket connected — total clients: 2
+2026-04-20T14:47:38 | INFO     | websocket.manager | WebSocket connected — total clients: 3
+2026-04-20T14:47:46 | INFO     | websocket.manager | WebSocket disconnected — total clients: 2
+2026-04-20T14:47:46 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:47:46 | INFO     | websocket.manager | WebSocket connected — total clients: 3
+2026-04-20T14:47:49 | INFO     | websocket.manager | WebSocket disconnected — total clients: 2
+2026-04-20T14:47:49 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:47:49 | INFO     | websocket.manager | WebSocket connected — total clients: 3
+2026-04-20T14:48:05 | INFO     | demo.scenarios | Demo scenario 'loitering' started for camera CAM_001.
+2026-04-20T14:48:05 | INFO     | demo.scenarios | Demo step 1/3: cls=suspicious_loitering sev=4
+2026-04-20T14:48:09 | INFO     | websocket.manager | WebSocket disconnected — total clients: 2
+2026-04-20T14:48:09 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:48:09 | INFO     | websocket.manager | WebSocket connected — total clients: 3
+2026-04-20T14:48:10 | INFO     | websocket.manager | WebSocket disconnected — total clients: 2
+2026-04-20T14:48:10 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:48:11 | INFO     | websocket.manager | WebSocket connected — total clients: 3
+2026-04-20T14:48:15 | INFO     | demo.scenarios | Demo step 2/3: cls=suspicious_loitering sev=5
+2026-04-20T14:48:25 | INFO     | demo.scenarios | Demo step 3/3: cls=suspicious_loitering sev=6
+2026-04-20T14:48:25 | INFO     | demo.scenarios | Demo scenario 'loitering' completed.
+2026-04-20T14:48:48 | WARNING  | ai.gemini_vision | Gemini API error. Attempting key rotation...
+2026-04-20T14:48:48 | INFO     | ai.utils | Rotated to next API key (Index 1).
+2026-04-20T14:48:48 | INFO     | ai.gemini_vision | Gemini Vision initialised — model=gemini-1.5-flash sdk=legacy
+2026-04-20T14:48:49 | ERROR    | ai.gemini_vision | Retry with rotated Gemini key failed: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:48:49 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+domain: "googleapis.com"
+metadata {
+  key: "service"
+  value: "generativelanguage.googleapis.com"
+}
+, locale: "en-US"
+message: "API key not valid. Please pass a valid API key."
+]
+2026-04-20T14:48:49 | INFO     | ai.gemini_vision | Gemini fallback used (reason=400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+d): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:48:49 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:48:49 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:49:11 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:49:11 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:49:11 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:49:11 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:49:16 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:49:16 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:49:16 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:49:16 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:49:20 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:49:20 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:49:21 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:49:21 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:49:28 | INFO     | websocket.manager | WebSocket disconnected — total clients: 2
+2026-04-20T14:49:28 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:49:28 | INFO     | websocket.manager | WebSocket connected — total clients: 3
+2026-04-20T14:49:45 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:49:45 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=unauthorized_access sev=6 conf=0.50
+2026-04-20T14:49:46 | ERROR    | ai.audio_detector | HuggingFace Audio API error: 404 Client Error: Not Found for url: https://api-inference.huggingface.co/models/MIT/ast-finetuned-audioset-10-10-0.4593
+2026-04-20T14:49:46 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:49:46 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=unauthorized_access sev=6 alert=True
+2026-04-20T14:49:52 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:49:52 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=unauthorized_access sev=6 conf=0.50
+2026-04-20T14:49:52 | ERROR    | ai.audio_detector | HuggingFace Audio API error: 404 Client Error: Not Found for url: https://api-inference.huggingface.co/models/MIT/ast-finetuned-audioset-10-10-0.4593
+2026-04-20T14:49:53 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:49:53 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=unauthorized_access sev=6 alert=True
+2026-04-20T14:49:58 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:49:58 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:49:58 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:49:58 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:50:06 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:50:06 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:50:07 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:50:07 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:50:12 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:50:12 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:50:12 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:50:12 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:50:17 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:50:17 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:50:18 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:50:18 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:50:29 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:50:29 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=suspicious_loitering sev=4 conf=0.55
+2026-04-20T14:50:30 | ERROR    | ai.audio_detector | HuggingFace Audio API error: 404 Client Error: Not Found for url: https://api-inference.huggingface.co/models/MIT/ast-finetuned-audioset-10-10-0.4593
+2026-04-20T14:50:30 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:50:30 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:50:36 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:50:36 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=suspicious_loitering sev=4 conf=0.55
+2026-04-20T14:50:37 | ERROR    | ai.audio_detector | HuggingFace Audio API error: 404 Client Error: Not Found for url: https://api-inference.huggingface.co/models/MIT/ast-finetuned-audioset-10-10-0.4593
+2026-04-20T14:50:38 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:50:38 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:50:39 | INFO     | websocket.manager | WebSocket disconnected — total clients: 2
+2026-04-20T14:50:39 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:50:39 | INFO     | websocket.manager | WebSocket connected — total clients: 3
+2026-04-20T14:50:44 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:50:44 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=suspicious_loitering sev=4 conf=0.55
+2026-04-20T14:50:45 | ERROR    | ai.audio_detector | HuggingFace Audio API error: 404 Client Error: Not Found for url: https://api-inference.huggingface.co/models/MIT/ast-finetuned-audioset-10-10-0.4593
+2026-04-20T14:50:45 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:50:45 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:50:48 | INFO     | websocket.manager | WebSocket disconnected — total clients: 2
+2026-04-20T14:50:48 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:50:48 | INFO     | websocket.manager | WebSocket disconnected — total clients: 1
+2026-04-20T14:50:48 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:50:48 | INFO     | websocket.manager | WebSocket disconnected — total clients: 0
+2026-04-20T14:50:48 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:50:48 | INFO     | guardia | Guardia AI shutting down…
+2026-04-20T14:50:48 | INFO     | ai.video_stream | Camera released.
+2026-04-20T14:50:48 | INFO     | guardia | Guardia AI stopped cleanly.
+2026-04-20T14:50:51 | INFO     | root | Logging configured — level=INFO, log_dir=./logs
+2026-04-20T14:50:52 | INFO     | ai.gemini_vision | Gemini Vision initialised — model=gemini-1.5-flash sdk=legacy
+2026-04-20T14:50:53 | INFO     | ai.groq_fusion | Groq fusion initialised — model=llama3-8b-8192
+2026-04-20T14:50:53 | INFO     | ai.motion_detector | MotionDetector initialised | min_contour_area=500, blur_kernel=21, threshold=25
+2026-04-20T14:50:55 | INFO     | ai.yolo_detector | YOLO initialized | model=yolov8n.pt
+2026-04-20T14:50:55 | INFO     | ai.audio_detector | AudioDetector initialized with HuggingFace Inference API.
+2026-04-20T14:50:55 | INFO     | guardia | Initialising Guardia AI backend…
+2026-04-20T14:50:55 | INFO     | guardia | Database ready | threshold=5 | interval=30 frames
+2026-04-20T14:50:55 | INFO     | guardia | ✅ AI video stream background task started.
+2026-04-20T14:50:55 | INFO     | guardia | Guardia AI running — http://0.0.0.0:8000/docs
+2026-04-20T14:50:55 | INFO     | ai.video_stream | VideoStreamProcessor starting…
+2026-04-20T14:50:58 | INFO     | ai.video_stream | Camera connected (source=0). Live stream active.
+2026-04-20T14:50:58 | INFO     | websocket.manager | WebSocket connected — total clients: 1
+2026-04-20T14:50:58 | INFO     | websocket.manager | WebSocket connected — total clients: 2
+2026-04-20T14:50:58 | INFO     | websocket.manager | WebSocket connected — total clients: 3
+2026-04-20T14:51:04 | WARNING  | ai.gemini_vision | Gemini API error. Attempting key rotation...
+2026-04-20T14:51:04 | INFO     | ai.utils | Rotated to next API key (Index 1).
+2026-04-20T14:51:04 | INFO     | ai.gemini_vision | Gemini Vision initialised — model=gemini-1.5-flash sdk=legacy
+2026-04-20T14:51:05 | ERROR    | ai.gemini_vision | Retry with rotated Gemini key failed: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:51:05 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+domain: "googleapis.com"
+metadata {
+  key: "service"
+  value: "generativelanguage.googleapis.com"
+}
+, locale: "en-US"
+message: "API key not valid. Please pass a valid API key."
+]
+2026-04-20T14:51:05 | INFO     | ai.gemini_vision | Gemini fallback used (reason=400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+d): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:51:05 | INFO     | demo.scenarios | Demo scenario 'forced_entry' started for camera CAM_001.
+2026-04-20T14:51:05 | INFO     | demo.scenarios | Demo step 1/3: cls=suspicious_loitering sev=4
+2026-04-20T14:51:05 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:51:05 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:51:09 | INFO     | demo.scenarios | Demo step 2/3: cls=unauthorized_access sev=7
+2026-04-20T14:51:11 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:51:11 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:51:11 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:51:11 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:51:12 | INFO     | demo.scenarios | Demo step 3/3: cls=unauthorized_access sev=9
+2026-04-20T14:51:12 | INFO     | demo.scenarios | Demo scenario 'forced_entry' completed.
+2026-04-20T14:51:37 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:51:37 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:51:37 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:51:37 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:51:47 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:51:47 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:51:47 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:51:47 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:52:16 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:52:16 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:52:17 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:52:17 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:52:26 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:52:26 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:52:26 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:52:26 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:52:38 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:52:38 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:52:38 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:52:38 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:52:46 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:52:46 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:52:46 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:52:46 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:52:51 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:52:51 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:52:52 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:52:52 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:52:56 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:52:56 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:52:57 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:52:57 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:53:10 | INFO     | websocket.manager | WebSocket disconnected — total clients: 2
+2026-04-20T14:53:10 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:53:11 | INFO     | websocket.manager | WebSocket connected — total clients: 3
+2026-04-20T14:53:16 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:53:16 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:53:16 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:53:16 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:53:21 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:53:21 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:53:22 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:53:22 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:53:30 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:53:30 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:53:30 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:53:30 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:53:36 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:53:36 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:53:36 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:53:36 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:53:41 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:53:41 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:53:42 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:53:42 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:53:47 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:53:47 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:53:47 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:53:47 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=normal_activity sev=2 alert=False
+2026-04-20T14:53:57 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:53:57 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:53:57 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:53:57 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:54:02 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:54:02 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:54:03 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:54:03 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:54:08 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:54:08 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:54:08 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:54:08 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:54:13 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:54:13 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=suspicious_loitering sev=4 conf=0.55
+2026-04-20T14:54:14 | ERROR    | ai.audio_detector | HuggingFace Audio API error: 404 Client Error: Not Found for url: https://api-inference.huggingface.co/models/MIT/ast-finetuned-audioset-10-10-0.4593
+2026-04-20T14:54:14 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:54:14 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:54:19 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:54:19 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:54:20 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:54:20 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:54:25 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:54:25 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:54:25 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:54:25 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:54:30 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:54:30 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:54:30 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:54:30 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:54:36 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:54:36 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=suspicious_loitering sev=4 conf=0.55
+2026-04-20T14:54:36 | ERROR    | ai.audio_detector | HuggingFace Audio API error: 404 Client Error: Not Found for url: https://api-inference.huggingface.co/models/MIT/ast-finetuned-audioset-10-10-0.4593
+2026-04-20T14:54:36 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:54:36 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:54:42 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:54:42 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:54:42 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:54:42 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:54:47 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:54:47 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:54:47 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:54:47 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:54:53 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:54:53 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:54:53 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:54:53 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:54:58 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:54:58 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:54:58 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:54:58 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:55:07 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:55:07 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:55:08 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:55:08 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:55:13 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:55:13 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:55:13 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:55:13 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:55:18 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:55:18 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:55:18 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:55:18 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:55:32 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:55:32 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:55:32 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:55:32 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:55:38 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:55:38 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:55:38 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:55:38 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:55:46 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:55:46 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:55:47 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:55:47 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:55:52 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:55:52 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:55:52 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:55:52 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:56:08 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:56:08 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:56:08 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:56:08 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:56:13 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:56:13 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:56:14 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:56:14 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:56:22 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:56:22 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:56:22 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:56:22 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:56:26 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:56:26 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=1 conf=0.90
+2026-04-20T14:56:27 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:56:27 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=3 alert=False
+2026-04-20T14:56:32 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:56:32 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=suspicious_loitering sev=4 conf=0.55
+2026-04-20T14:56:33 | ERROR    | ai.audio_detector | HuggingFace Audio API error: 404 Client Error: Not Found for url: https://api-inference.huggingface.co/models/MIT/ast-finetuned-audioset-10-10-0.4593
+2026-04-20T14:56:33 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:56:33 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:56:34 | INFO     | websocket.manager | WebSocket disconnected — total clients: 2
+2026-04-20T14:56:34 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:56:34 | INFO     | websocket.manager | WebSocket disconnected — total clients: 1
+2026-04-20T14:56:34 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:56:34 | INFO     | websocket.manager | WebSocket disconnected — total clients: 0
+2026-04-20T14:56:34 | INFO     | guardia | WebSocket client disconnected.
+2026-04-20T14:56:39 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:56:39 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:56:40 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:56:40 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:56:45 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:56:45 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=suspicious_loitering sev=4 conf=0.55
+2026-04-20T14:56:46 | ERROR    | ai.audio_detector | HuggingFace Audio API error: 404 Client Error: Not Found for url: https://api-inference.huggingface.co/models/MIT/ast-finetuned-audioset-10-10-0.4593
+2026-04-20T14:56:46 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:56:46 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False
+2026-04-20T14:56:52 | ERROR    | ai.gemini_vision | Gemini API call failed [cam=CAM_001]: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2026-04-20T14:56:52 | INFO     | ai.gemini_vision | Gemini fallback used (reason=404 models/gemini-1.5-flash is not found for API version v1beta, or is not suppo): cls=normal_activity sev=2 conf=0.75
+2026-04-20T14:56:52 | ERROR    | ai.groq_fusion | Groq fusion failed [cam=CAM_001]: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+2026-04-20T14:56:52 | INFO     | ai.pipeline | Pipeline result [cam=CAM_001]: cls=suspicious_loitering sev=4 alert=False

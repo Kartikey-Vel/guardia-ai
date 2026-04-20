@@ -20,6 +20,7 @@ from typing import Optional
 from config import get_settings
 from models.schemas import FusionResult, MotionResult, VisionResult, YOLOResult
 from utils.confidence_scorer import ConfidenceScorer
+from ai.utils import KeyRotator
 
 logger = logging.getLogger(__name__)
 

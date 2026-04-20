@@ -55,23 +55,23 @@ ALERT_THRESHOLD=6  # Severity above this triggers a broadcast
 You are responsible for signing off on the following modules. Mark these as done incrementally:
 
 ### 🔬 [ ] AI Key Rotation Logic
-- [ ] Provide 1 invalid/expired key and 1 valid key in `.env`.
-- [ ] Trigger an analysis (via `/api/v1/demo/trigger`).
-- [ ] **Expectation**: Backend logs show a failure on Key 1, then a successful rotation and fallback to Key 2.
+- [x] Provide 1 invalid/expired key and 1 valid key in `.env`.
+- [x] Trigger an analysis (via `/api/v1/demo/trigger`).
+- [x] **Expectation**: Backend logs show a failure on Key 1, then a successful rotation and fallback to Key 2.
 
 ### 🎥 [ ] Multimodal Fusion Accuracy
-- [ ] Trigger the `forced_entry` scenario.
-- [ ] **Expectation**: Verify that the final severity is **high** (8+) because it combined "broken glass" audio with "loitering" visual motion.
+- [x] Trigger the `forced_entry` scenario.
+- [x] **Expectation**: Verify that the final severity is **high** (8+) because it combined "broken glass" audio with "loitering" visual motion.
 
 ### 🎙️ [ ] Audio Detector Handshake
-- [ ] Run the backend and watch the logs during a process loop.
+- [x] Run the backend and watch the logs during a process loop.
 - [ ] **Expectation**: Logs should show `Audio Analysis: [Label] ([Score])` whenever motion is detected.
 
 ### ⚡ [ ] Real-time Dashboard Sync
-- [ ] Start the backend (`uvicorn main:app`).
-- [ ] Start the frontend (`npm run dev`).
-- [ ] Open the browser and trigger a demo event.
-- [ ] **Expectation**: The alert appears in the `AlertList` **instantly** without a page refresh.
+- [x] Start the backend (`uvicorn main:app`).
+- [x] Start the frontend (`npm run dev`).
+- [x] Open the browser and trigger a demo event.
+- [x] **Expectation**: The alert appears in the `AlertList` **instantly** without a page refresh.
 
 ---
 
