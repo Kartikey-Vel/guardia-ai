@@ -65,6 +65,11 @@ Update at least:
 - GROQ_API_KEY
 - HUGGINGFACE_API_KEY
 
+Optional runtime settings:
+- AUDIO_ENABLED=false
+- GEMINI_MODEL=gemini-2.0-flash
+- GROQ_MODEL=llama-3.1-8b-instant
+
 ## 6) Verify Installation
 ```bash
 python -m pip --version

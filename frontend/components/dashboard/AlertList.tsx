@@ -6,6 +6,7 @@ import { useAlerts } from "@/components/providers/AlertProvider";
 import { APIEvent } from "@/lib/api-client";
 import { AlertCircle, Clock, ShieldAlert, AlertTriangle, Bell, MonitorPlay, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { formatRelativeTime } from "@/lib/time";
 
 export const getSeverityStyles = (severity: number): { color: "danger" | "warning" | "success" | "default", icon: React.ReactNode, bg: string, border: string } => {
   if (severity >= 8) {
@@ -16,11 +17,6 @@ export const getSeverityStyles = (severity: number): { color: "danger" | "warnin
     return { color: "success", icon: <AlertCircle size={16} />, bg: "bg-success/10 text-success", border: "border-success/20" };
   }
   return { color: "default", icon: <Clock size={16} />, bg: "bg-default-200 text-default-600", border: "border-default-200/50" };
-};
-
-const formatTime = (timestamp: string) => {
-  const date = new Date(timestamp);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
 export function AlertList() {
@@ -86,7 +82,7 @@ export function AlertList() {
                               {alert.classification.replace(/_/g, ' ')}
                             </p>
                             <span className="text-[10px] font-bold text-default-400">
-                              {formatTime(alert.timestamp)}
+                              {formatRelativeTime(alert.timestamp)}
                             </span>
                           </div>
                           
@@ -140,7 +136,7 @@ export function AlertList() {
                     <span className="text-[10px] text-default-400 font-bold uppercase tracking-widest">Detected At</span>
                     <span className="text-sm font-bold flex items-center gap-1.5">
                       <Clock size={14} className="text-default-400" />
-                      {selectedAlert && formatTime(selectedAlert.timestamp)}
+                      {selectedAlert && formatRelativeTime(selectedAlert.timestamp)}
                     </span>
                   </div>
                 </div>

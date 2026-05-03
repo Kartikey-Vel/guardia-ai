@@ -99,7 +99,7 @@ class AIFramePipeline:
         # In a real setup, this would use a persistent audio stream.
         # Here we simulate an audio check if motion is significantly high.
         audio_result = None
-        if motion.motion_score > 0.1:
+        if self._cfg.audio_enabled and motion.motion_score > 0.1:
             # We "listen" for a second of synthetic audio data
             dummy_audio = b"\x00" * 32000  # 1s of 16kHz mono (empty but demonstrates logic)
             audio_result = audio_detector.analyze_audio(dummy_audio)
@@ -151,9 +151,11 @@ class AIFramePipeline:
             motion_score=motion_result.motion_score,
         )
         
-        # Audio check (Simulated)
-        dummy_audio = b"\x00" * 32000
-        audio_result = audio_detector.analyze_audio(dummy_audio)
+        # Audio check is opt-in because the backend currently simulates audio input.
+        audio_result = None
+        if self._cfg.audio_enabled:
+            dummy_audio = b"\x00" * 32000
+            audio_result = audio_detector.analyze_audio(dummy_audio)
 
         fusion = groq_fusion.fuse(
             motion_result,

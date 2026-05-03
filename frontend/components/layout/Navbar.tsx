@@ -5,7 +5,7 @@ import { Menu, Bell, Search, PanelLeftOpen } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { usePathname } from "next/navigation";
 import { AlertList } from "../dashboard/AlertList";
-import { MOCK_ALERTS } from "@/lib/data";
+import { useAlerts } from "@/components/providers/AlertProvider";
 
 interface NavbarProps {
   onMenuClick: () => void;
@@ -15,6 +15,7 @@ interface NavbarProps {
 
 export function Navbar({ onMenuClick, isCollapsed, onCollapse }: NavbarProps) {
   const pathname = usePathname();
+  const { alerts } = useAlerts();
   
   // Very simple breadcrumb logic
   const getPageTitle = () => {
@@ -71,7 +72,9 @@ export function Navbar({ onMenuClick, isCollapsed, onCollapse }: NavbarProps) {
                 <Button isIconOnly variant="tertiary" aria-label="Notifications" className="text-default-500">
                   <Bell size={18} />
                 </Button>
-                <Badge color="danger" placement="top-right">{MOCK_ALERTS.filter(a => a.severity === "CRITICAL").length}</Badge>
+                <Badge color="danger" placement="top-right">
+                  {alerts.filter((alert) => alert.severity >= 8 && !alert.is_reviewed).length}
+                </Badge>
               </Badge.Anchor>
             </Popover.Trigger>
             <Popover.Content className="p-0 border border-white/10 shadow-2xl bg-background/80 backdrop-blur-xl">

@@ -86,6 +86,7 @@ class GeminiVisionAnalyzer:
         self._rotator = KeyRotator(self._cfg.gemini_api_keys)
         self._model = None
         self._initialized = False
+        self._disabled_reason: Optional[str] = None
         self._init_client()
 
     def _init_client(self) -> None:
@@ -93,6 +94,10 @@ class GeminiVisionAnalyzer:
         api_key = self._rotator.current_key
         if not api_key:
             logger.warning("No Gemini API keys available — Gemini vision will use rule-based fallback.")
+            return
+
+        if self._disabled_reason:
+            logger.warning("Gemini vision is disabled (%s). Skipping client initialisation.", self._disabled_reason)
             return
 
         try:
@@ -149,6 +154,9 @@ class GeminiVisionAnalyzer:
         if not self._initialized:
             return self._rule_based_fallback(motion_score, reason="no_api_key")
 
+        if self._disabled_reason:
+            return self._rule_based_fallback(motion_score, reason=self._disabled_reason)
+
         pil_image = self._bgr_to_pil(frame)
         if pil_image is None:
             return self._rule_based_fallback(motion_score, reason="decode_error")
@@ -156,9 +164,15 @@ class GeminiVisionAnalyzer:
         try:
             return self._call_gemini(pil_image, camera_id, motion_score)
         except Exception as exc:
-            # TASK-052: API Key rotation on quota hit
             err_msg = str(exc).lower()
-            if "429" in err_msg or "quota" in err_msg or "rate limit" in err_msg or "400" in err_msg or "invalid" in err_msg or "not valid" in err_msg:
+            if self._is_quota_error(err_msg):
+                self._disabled_reason = "gemini_quota_exceeded"
+                self._initialized = False
+                logger.error("Gemini quota exhausted for cam=%s; falling back until restart or settings refresh.", camera_id)
+                return self._rule_based_fallback(motion_score, reason="quota_exceeded")
+
+            # TASK-052: API Key rotation on transient provider errors
+            if "429" in err_msg or "rate limit" in err_msg or "400" in err_msg or "invalid" in err_msg or "not valid" in err_msg:
                 logger.warning("Gemini API error. Attempting key rotation...")
                 if self._rotator.rotate():
                     self._init_client()
@@ -191,12 +205,32 @@ class GeminiVisionAnalyzer:
         try:
             return self._call_gemini(pil_image, camera_id, motion_score)
         except Exception as exc:
+            err_msg = str(exc).lower()
+            if self._is_quota_error(err_msg):
+                self._disabled_reason = "gemini_quota_exceeded"
+                self._initialized = False
+                logger.error("Gemini quota exhausted for cam=%s; falling back until restart or settings refresh.", camera_id)
+                return self._rule_based_fallback(motion_score, reason="quota_exceeded")
+
             logger.error("Gemini API call failed [cam=%s]: %s", camera_id, exc)
             return self._rule_based_fallback(motion_score, reason=str(exc)[:80])
 
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_quota_error(err_msg: str) -> bool:
+        return any(
+            token in err_msg
+            for token in (
+                "quota_exceeded",
+                "free_tier_requests",
+                "resource exhausted",
+                "quota",
+                "billing",
+            )
+        ) or "429" in err_msg
 
     def _call_gemini(
         self,
