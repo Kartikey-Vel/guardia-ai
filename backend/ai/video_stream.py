@@ -20,6 +20,7 @@ import random
 import uuid
 from datetime import datetime
 from typing import Optional
+from threading import Lock
 
 import cv2
 import numpy as np
@@ -67,6 +68,11 @@ class VideoStreamProcessor:
         self._running = False
         self._demo_mode = False
         self._frame_count = 0
+        self._frame_lock = Lock()
+        self._latest_frame_b64: Optional[str] = None
+        self._latest_camera_id: str = "CAM_001"
+        self._latest_frame_timestamp: Optional[str] = None
+        self._target_fps = max(1, int(getattr(self._cfg, "stream_fps", 10)))
 
     # ------------------------------------------------------------------
     # Public control
@@ -115,6 +121,7 @@ class VideoStreamProcessor:
                 continue
 
             self._frame_count += 1
+            self._store_latest_frame(frame, self._get_active_camera_id())
 
             # Run the AI pipeline in a thread to avoid blocking the event loop
             result = await asyncio.get_event_loop().run_in_executor(
@@ -146,7 +153,7 @@ class VideoStreamProcessor:
             if self._frame_count % 100 == 0:
                 await manager.broadcast_status({
                     "cameras_active": 1,
-                    "processing_fps": 10,
+                    "processing_fps": self._target_fps,
                     "frame_count": self._frame_count,
                     "demo_mode": False,
                     "models_status": {
@@ -156,11 +163,31 @@ class VideoStreamProcessor:
                     },
                 })
 
-            # ~10 FPS — sleep to remain async-friendly
-            await asyncio.sleep(0.1)
+            # Sleep to approximate the configured target frame rate.
+            await asyncio.sleep(max(0.0, (1.0 / self._target_fps)))
 
         if self._cap:
             self._cap.release()
+
+    def get_latest_snapshot(self) -> dict:
+        """Return the most recent encoded frame for frontend playback."""
+        with self._frame_lock:
+            return {
+                "camera_id": self._latest_camera_id,
+                "frame": self._latest_frame_b64,
+                "timestamp": self._latest_frame_timestamp,
+                "demo_mode": self._demo_mode,
+                "running": self._running,
+                "error": None if self._latest_frame_b64 else "Live frame is not available yet.",
+            }
+
+    @property
+    def target_fps(self) -> int:
+        return self._target_fps
+
+    def set_target_fps(self, fps: int) -> None:
+        self._target_fps = max(1, int(fps))
+        logger.info("VideoStreamProcessor target FPS updated to %d", self._target_fps)
 
     # ------------------------------------------------------------------
     # Demo mode (TASK-045 scaffold)
@@ -232,6 +259,13 @@ class VideoStreamProcessor:
             return "data:image/jpeg;base64," + base64.b64encode(buf).decode()
         except Exception:
             return ""
+
+    def _store_latest_frame(self, frame: np.ndarray, camera_id: str) -> None:
+        frame_b64 = self._encode_frame(frame)
+        with self._frame_lock:
+            self._latest_frame_b64 = frame_b64 or None
+            self._latest_camera_id = camera_id
+            self._latest_frame_timestamp = datetime.utcnow().isoformat() + "Z"
 
     @staticmethod
     def _persist_event(result, camera_id: str, frame: Optional[np.ndarray]) -> Event:

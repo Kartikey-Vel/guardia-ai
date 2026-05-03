@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Card, Chip, Tooltip } from "@heroui/react";
-import { Video, VideoOff, Maximize2, MoreHorizontal } from "lucide-react";
+import { Card, Chip } from "@heroui/react";
+import { Video, VideoOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { api, APICamera } from "@/lib/api-client";
+import { DeviceCameraFeed } from "@/components/dashboard/DeviceCameraFeed";
 
 export function CameraGrid() {
   const [cameras, setCameras] = useState<APICamera[]>([]);
@@ -34,6 +35,8 @@ export function CameraGrid() {
           {activeCount} / {cameras.length} Active
         </Chip>
       </div>
+
+      <DeviceCameraFeed />
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {isLoading ? (

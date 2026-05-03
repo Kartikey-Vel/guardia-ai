@@ -46,6 +46,7 @@ def system_status(db: Session = Depends(get_db)):
         "version": "1.0.0",
         "alert_threshold": cfg.alert_threshold,
         "analysis_interval_frames": cfg.analysis_interval_frames,
+        "stream_fps": video_stream.target_fps,
         "gemini_configured": bool(cfg.gemini_api_key),
         "groq_configured": bool(cfg.groq_api_key),
         "yolo_enabled": bool(cfg.yolo_enabled),

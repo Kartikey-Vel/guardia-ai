@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     # Detection thresholds
     alert_threshold: int = 5
     analysis_interval_frames: int = 30
+    stream_fps: int = 10
 
     # Database
     database_url: str = "sqlite:///./guardia.db"

@@ -2,18 +2,56 @@
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, Input, Button, Switch, Avatar } from "@heroui/react";
-import { User, Bell, Shield, Key } from "lucide-react";
-import { useState } from "react";
+import { User, Bell, Shield, Key, Camera } from "lucide-react";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api-client";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
+   const [streamFps, setStreamFps] = useState("10");
+   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+   useEffect(() => {
+      const loadSettings = async () => {
+         try {
+            const settings = await api.getSettings();
+            const currentFps = settings.stream_fps ?? settings?.stream_fps;
+            if (currentFps !== undefined && currentFps !== null) {
+               setStreamFps(String(currentFps));
+            }
+         } catch (error) {
+            console.error("Failed to load settings:", error);
+         }
+      };
+
+      loadSettings();
+   }, []);
 
   const tabs = [
     { id: "profile", label: "Profile", icon: <User size={18} /> },
     { id: "notifications", label: "Notifications", icon: <Bell size={18} /> },
     { id: "security", label: "Security", icon: <Shield size={18} /> },
     { id: "api", label: "API Keys", icon: <Key size={18} /> },
+      { id: "stream", label: "Live Feed", icon: <Camera size={18} /> },
   ];
+
+   const saveStreamFps = async () => {
+      setSaveStatus(null);
+      const fps = Number(streamFps);
+
+      if (!Number.isFinite(fps) || fps < 1 || fps > 60) {
+         setSaveStatus("Frame rate must be between 1 and 60 FPS.");
+         return;
+      }
+
+      try {
+         await api.updateSettings({ stream_fps: fps });
+         setSaveStatus(`Live feed updated to ${fps} FPS.`);
+      } catch (error) {
+         console.error("Failed to save stream FPS:", error);
+         setSaveStatus("Failed to update live feed frame rate.");
+      }
+   };
 
   return (
     <DashboardLayout>
@@ -140,6 +178,38 @@ export default function SettingsPage() {
                  </div>
               </div>
             )}
+
+                  {activeTab === "stream" && (
+                     <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+                         <h3 className="text-xl font-bold font-outfit mb-2">Live Feed Frame Rate</h3>
+                         <p className="text-sm text-default-500 mb-2">
+                            Control how fast the backend captures and refreshes the shared camera feed.
+                         </p>
+
+                         <div className="flex flex-col gap-4 max-w-sm">
+                              <div className="flex flex-col gap-1.5">
+                                 <label className="text-sm font-medium">Target FPS</label>
+                                 <Input
+                                    type="number"
+                                    min={1}
+                                    max={60}
+                                    value={streamFps}
+                                    onValueChange={setStreamFps}
+                                    variant="secondary"
+                                    description="Recommended range: 5 to 30 FPS"
+                                 />
+                              </div>
+
+                              {saveStatus && (
+                                 <p className="text-xs text-default-500">{saveStatus}</p>
+                              )}
+
+                              <Button variant="primary" className="self-start" onPress={saveStreamFps}>
+                                 Save Frame Rate
+                              </Button>
+                         </div>
+                     </div>
+                  )}
 
           </Card>
         </div>

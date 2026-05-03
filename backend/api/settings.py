@@ -59,6 +59,14 @@ def update_settings(payload: SettingsUpdate, db: Session = Depends(get_db)):
         except Exception as exc:
             logger.error("AI reinit failed: %s", exc)
 
+    if "stream_fps" in keys_changed:
+        try:
+            from ai.video_stream import video_stream
+            fps_value = int(updates["stream_fps"])
+            video_stream.set_target_fps(fps_value)
+        except Exception as exc:
+            logger.error("Failed to update video stream FPS: %s", exc)
+
     return {"status": "updated", "keys_updated": keys_changed}
 
 

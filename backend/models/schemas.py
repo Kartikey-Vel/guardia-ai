@@ -81,6 +81,7 @@ class SettingsUpdate(BaseModel):
     huggingface_api_key: Optional[str] = None
     alert_threshold: Optional[int] = None
     analysis_interval_frames: Optional[int] = None
+    stream_fps: Optional[int] = Field(default=None, ge=1, le=60)
 
 
 # ---------------------------------------------------------------------------

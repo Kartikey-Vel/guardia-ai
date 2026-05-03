@@ -27,7 +27,7 @@ export interface APIEvent {
   severity: number;
   confidence: number;
   description: string;
-  attribution: any;
+  attribution: Record<string, unknown>;
   ai_model: string;
   is_reviewed: boolean;
 }
@@ -50,6 +50,15 @@ export interface AnalyticsSummary {
   cameras_active: number;
 }
 
+export interface LiveFrameResponse {
+  camera_id: string;
+  frame: string | null;
+  timestamp: string | null;
+  demo_mode: boolean;
+  running: boolean;
+  error: string | null;
+}
+
 // --- API Methods ---
 
 export const api = {
@@ -60,13 +69,14 @@ export const api = {
   // Cameras
   getCameras: () => apiClient.get<APICamera[]>('/cameras').then(res => res.data),
   toggleCamera: (id: string) => apiClient.post(`/cameras/${id}/toggle`),
+  getLiveFrame: () => apiClient.get<LiveFrameResponse>('/cameras/live-frame').then(res => res.data),
   
   // Analytics
   getAnalyticsSummary: () => apiClient.get<AnalyticsSummary>('/analytics/summary').then(res => res.data),
   
   // Settings
   getSettings: () => apiClient.get('/settings').then(res => res.data),
-  updateSettings: (data: any) => apiClient.patch('/settings', data).then(res => res.data),
+  updateSettings: (data: Record<string, unknown>) => apiClient.patch('/settings', data).then(res => res.data),
   
   // System
   getStatus: () => apiClient.get('/status').then(res => res.data),

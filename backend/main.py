@@ -27,7 +27,7 @@ configure_logging(log_level="INFO")
 logger = logging.getLogger("guardia")
 
 from config import get_settings
-from database import init_db
+from database import init_db, Setting, SessionLocal
 from api.events import router as events_router
 from api.cameras import router as cameras_router
 from api.settings import router as settings_router
@@ -46,6 +46,15 @@ async def lifespan(app: FastAPI):
     """Manage application startup and graceful shutdown."""
     logger.info("Initialising Guardia AI backend…")
     init_db()
+    db = SessionLocal()
+    try:
+        fps_setting = db.query(Setting).filter(Setting.key == "stream_fps").first()
+        if fps_setting:
+            from ai.video_stream import video_stream
+            video_stream.set_target_fps(int(fps_setting.value))
+            logger.info("Loaded persisted stream FPS=%s", fps_setting.value)
+    finally:
+        db.close()
     cfg = get_settings()
     logger.info(
         "Database ready | threshold=%d | interval=%d frames",
